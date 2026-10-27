@@ -53,8 +53,13 @@ export function WorkArea({ area, raster, highlight, trace, head, onMove, onNudge
   const drag = useRef<{ startX: number; startY: number; x: number; y: number } | null>(null);
   const descriptionId = useId();
   const headHintId = useId();
+  const homeHintId = useId();
   const [headModeOn, setHeadMode] = useState(false);
+  // a job, trace or motion test turns click-to-move off for good, so it never silently returns
+  if (headModeOn && !canMoveHead) setHeadMode(false);
   const headMode = headModeOn && canMoveHead;
+  // redraw when the canvas changes size: labels and strokes are sized in on-screen pixels
+  const [shownWidth, setShownWidth] = useState(0);
   const [keyboardMoved, setKeyboardMoved] = useState(0);
   const [announcement, setAnnouncement] = useState('');
   const dots = useDotImage(raster);
@@ -109,7 +114,7 @@ export function WorkArea({ area, raster, highlight, trace, head, onMove, onNudge
 
     if (showDimensions) {
       // labels scale with the on-screen canvas size so text stays the same size in CSS pixels
-      const shown = canvas.getBoundingClientRect().width || area.width * scale;
+      const shown = shownWidth || canvas.getBoundingClientRect().width || area.width * scale;
       drawDimensions(ctx, area, raster?.rect ?? null, head, dimensions, { unit: area.width / shown, label: (px) => `${mm(px)} mm` });
     }
 
@@ -129,7 +134,15 @@ export function WorkArea({ area, raster, highlight, trace, head, onMove, onNudge
       ctx.stroke();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps -- `mm` only depends on area and locale
-  }, [area, scale, raster, dots, highlight, trace, head, showDimensions, dimensions, formatNumber]);
+  }, [area, scale, raster, dots, highlight, trace, head, showDimensions, dimensions, formatNumber, shownWidth]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(([entry]) => entry && setShownWidth(Math.round(entry.contentRect.width)));
+    observer.observe(canvas);
+    return () => observer.disconnect();
+  }, []);
 
   const toDevice = (clientDelta: number) => {
     const shown = canvasRef.current?.getBoundingClientRect().width || 1;
@@ -137,6 +150,7 @@ export function WorkArea({ area, raster, highlight, trace, head, onMove, onNudge
   };
 
   const onPointerDown = (e: PointerEvent<HTMLCanvasElement>) => {
+    if (e.button !== 0) return;
     if (headMode) {
       const box = e.currentTarget.getBoundingClientRect();
       const x = Math.round(((e.clientX - box.left) * area.width) / box.width);
@@ -161,8 +175,9 @@ export function WorkArea({ area, raster, highlight, trace, head, onMove, onNudge
     if (!delta) return;
     // keyboard alternative to clicking: arrows drive the head in click-to-move mode
     if (headMode) {
-      if (!head) return;
       e.preventDefault();
+      // one move per press: auto-repeat would queue moves far ahead of the physical head
+      if (!head || e.repeat) return;
       const px = mmToPx(step, area);
       const clampTo = (v: number, max: number) => Math.min(max - 1, Math.max(0, v));
       onHeadTo(clampTo(head.x + Math.sign(delta[0]!) * px, area.width), clampTo(head.y + Math.sign(delta[1]!) * px, area.height));
@@ -226,11 +241,12 @@ export function WorkArea({ area, raster, highlight, trace, head, onMove, onNudge
         <div className="head-readout">
           <span aria-hidden="true" className="head-dot" />
           <strong aria-live="polite">{headText}</strong>
-          {!head && (
-            <button type="button" onClick={onGoHome} disabled={!canMoveHead}>
-              {t('goHome')}
-            </button>
-          )}
+          <button type="button" onClick={onGoHome} disabled={!canMoveHead} aria-describedby={homeHintId}>
+            {t('goHome')}
+          </button>
+          <span id={homeHintId} className={head ? 'visually-hidden' : 'hint'} style={{ margin: 0, flexBasis: '100%' }}>
+            {t('goHomeHint')}
+          </span>
         </div>
       )}
       {showDimensions && <DimensionsTable dimensions={dimensions} mm={mm} />}

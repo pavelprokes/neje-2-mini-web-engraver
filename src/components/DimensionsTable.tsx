@@ -3,6 +3,7 @@
 import { useI18n } from '@/i18n/I18nProvider';
 import type { MessageKey } from '@/i18n';
 import type { Dimensions } from '@/lib/dimensions';
+import { DIMENSION_COLORS } from './drawDimensions';
 
 /** Text version of the canvas dimension lines (the canvas itself is hidden from assistive tech). */
 export function DimensionsTable({ dimensions, mm }: { readonly dimensions: Dimensions; readonly mm: (px: number) => string }) {
@@ -15,9 +16,9 @@ export function DimensionsTable({ dimensions, mm }: { readonly dimensions: Dimen
     ['dimBottom', mm(d.bottom)],
   ];
   const groups: { title: MessageKey; color: string; rows: [MessageKey, string][] }[] = [];
-  if (image) groups.push({ title: 'dimImage', color: '#c81e1e', rows: [['dimSize', `${mm(image.width)} × ${mm(image.height)}`], ...edges(image)] });
-  if (head) groups.push({ title: 'dimHead', color: '#1d4ed8', rows: edges(head) });
-  if (headToImage) groups.push({ title: 'dimHeadToImage', color: '#b45309', rows: [['dimDx', mm(headToImage.dx)], ['dimDy', mm(headToImage.dy)]] });
+  if (image) groups.push({ title: 'dimImage', color: DIMENSION_COLORS.image, rows: [['dimSize', `${mm(image.width)} × ${mm(image.height)}`], ...edges(image)] });
+  if (head) groups.push({ title: 'dimHead', color: DIMENSION_COLORS.head, rows: edges(head) });
+  if (headToImage) groups.push({ title: 'dimHeadToImage', color: DIMENSION_COLORS.relative, rows: [['dimDx', mm(headToImage.dx)], ['dimDy', mm(headToImage.dy)]] });
   if (groups.length === 0) return null;
 
   return (

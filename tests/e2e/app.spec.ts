@@ -48,7 +48,7 @@ test.describe('accessibility (WCAG 2.2 AA, axe)', () => {
       await loadImage(page);
       await page.getByText('Advanced').click();
       await page.getByLabel('Show serial traffic').check();
-      await page.getByRole('button', { name: 'Go home' }).first().click();
+      await page.getByRole('button', { name: 'Go home' }).click();
       await page.getByRole('button', { name: 'Show dimensions' }).click();
       await page.getByRole('button', { name: 'Move head by clicking' }).click();
       await expectAccessible(page);
@@ -210,13 +210,23 @@ test.describe('engraving with the simulator', () => {
     await page.keyboard.press('ArrowRight');
     await page.keyboard.press('Shift+ArrowDown');
     await expect(page.getByText('Head at X 56 mm, Y 40 mm')).toBeVisible();
-    await toggle.click();
+
+    // only the primary button moves the head
+    await canvas.click({ button: 'right', position: { x: 10, y: 10 } });
+    await expect(page.getByText('Head at X 56 mm, Y 40 mm')).toBeVisible();
+
+    // a trace switches the mode off, and it stays off afterwards
+    await loadImage(page);
+    await page.getByRole('button', { name: 'Trace frame' }).click();
+    await expect(toggle).toBeDisabled();
+    await page.getByRole('button', { name: 'Stop tracing' }).click();
+    await expect(toggle).toBeEnabled();
     await expect(toggle).toHaveAttribute('aria-pressed', 'false');
   });
 
   test('dimensions show image and head distances, also as text', async ({ page }) => {
     await connectSimulator(page);
-    await page.getByRole('button', { name: 'Go home' }).first().click();
+    await page.getByRole('button', { name: 'Go home' }).click();
     await loadImage(page); // 2:1 image → 40 × 20 mm
     await page.getByLabel('X from left (mm)').fill('10');
     await page.getByLabel('Y from top (mm)').fill('5');
@@ -271,7 +281,7 @@ test.describe('engraving with the simulator', () => {
   test('head position is unknown until homed, then follows moves', async ({ page }) => {
     await connectSimulator(page);
     await expect(page.getByText('Head position unknown. Use “Go home” to set it.')).toBeVisible();
-    await page.getByRole('button', { name: 'Go home' }).first().click();
+    await page.getByRole('button', { name: 'Go home' }).click();
     await expect(page.getByText('Head at X 0 mm, Y 0 mm')).toBeVisible();
     await loadImage(page);
     await page.getByLabel('X from left (mm)').fill('20');

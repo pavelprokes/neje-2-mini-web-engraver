@@ -174,14 +174,12 @@ interface PositionPanelProps {
   readonly canTestMotion: boolean;
   readonly motionTesting: boolean;
   readonly onTestMotion: () => void;
-  readonly onGoHome: () => void;
 }
 
-export function PositionPanel({ xMm, yMm, patch, onCenter, canMoveHead, onMoveHead, canTestMotion, motionTesting, onTestMotion, onGoHome }: PositionPanelProps) {
+export function PositionPanel({ xMm, yMm, patch, onCenter, canMoveHead, onMoveHead, canTestMotion, motionTesting, onTestMotion }: PositionPanelProps) {
   const { t } = useI18n();
   const hintId = useId();
   const motionHintId = useId();
-  const homeHintId = useId();
   return (
     <Panel title={t('positionHeading')}>
       <NumberField label={t('positionX')} value={xMm} min={0} onChange={(v) => patch({ xMm: v })} />
@@ -201,16 +199,10 @@ export function PositionPanel({ xMm, yMm, patch, onCenter, canMoveHead, onMoveHe
         {t('moveHeadHint')}
       </p>
       <div className="row">
-        <button type="button" onClick={onGoHome} disabled={!canTestMotion} aria-describedby={homeHintId}>
-          {t('goHome')}
-        </button>
         <button type="button" onClick={onTestMotion} disabled={!canTestMotion} aria-describedby={motionHintId}>
           {motionTesting ? t('motionTestRunning') : t('motionTest')}
         </button>
       </div>
-      <p id={homeHintId} className="hint">
-        {t('goHomeHint')}
-      </p>
       <p id={motionHintId} className="hint">
         {t('motionTestHint')}
       </p>

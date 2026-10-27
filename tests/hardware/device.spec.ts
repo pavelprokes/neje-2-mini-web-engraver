@@ -75,7 +75,7 @@ test('identifies, homes, reconnects and runs the motion test on a real engraver'
     await expect(status).toHaveText('Ready', { timeout: 10_000 });
     expect(sent.slice(before).filter((f) => f[3] === 0x05)).toEqual([]);
     await expect(page.getByText('Head position unknown. Use “Go home” to set it.')).toBeVisible();
-    await page.getByRole('button', { name: 'Go home' }).first().click();
+    await page.getByRole('button', { name: 'Go home' }).click();
     await expect(page.getByText('Head at X 0 mm, Y 0 mm')).toBeVisible();
 
     // manual test button

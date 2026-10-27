@@ -172,10 +172,6 @@ export class NejeSession {
       case 'status':
         this.update({ machine: m.state });
         break;
-      case 'position':
-        // reported by the device while it burns
-        this.update({ head: { x: m.x, y: m.y } });
-        break;
       case 'telemetry':
         this.update({ temperatureC: m.temperatureC, batteryPercent: m.batteryPercent });
         break;
@@ -217,6 +213,7 @@ export class NejeSession {
     if (this.snapshot.link === 'closed') return;
     this.upload?.controller.abort();
     this.motion?.abort();
+    this.traceOrigin = null;
     this.update({ link: 'closed', closeReason: 'DISCONNECTED', previewing: false });
     // release the port so a reconnect can open it again
     void this.transport.close().catch(() => undefined);
@@ -302,15 +299,18 @@ export class NejeSession {
     this.update({ previewing: true, head: null });
   }
 
-  async previewOff(): Promise<void> {
+  /**
+   * Switches tracing off. By default the head is then parked at the frame corner, because
+   * tracing leaves it somewhere on the frame and the app wants to know where it is.
+   */
+  async previewOff({ park = true }: { readonly park?: boolean } = {}): Promise<void> {
     this.requireReady();
     // flip first, so a preview refresh racing with this call sees the preview as off
     this.update({ previewing: false });
-    await this.send(commands.previewOff());
-    // tracing leaves the head somewhere on the frame; park it at the corner so it is known again
     const origin = this.traceOrigin;
     this.traceOrigin = null;
-    if (origin) await this.moveTo(origin.x, origin.y);
+    await this.send(commands.previewOff());
+    if (park && origin) await this.moveTo(origin.x, origin.y);
   }
 
   async moveTo(x: number, y: number): Promise<void> {
@@ -405,7 +405,8 @@ export class NejeSession {
     };
     if (params) await this.setLaserParams(params);
     abortIfStopped();
-    if (this.snapshot.previewing) await this.previewOff();
+    // no parking move here: the job is announced straight after, as the vendor app does
+    if (this.snapshot.previewing) await this.previewOff({ park: false });
     abortIfStopped();
 
     const accepted = this.waitFor('jobAccepted', this.jobAcceptTimeoutMs);
@@ -462,6 +463,7 @@ export class NejeSession {
     upload?.controller.abort();
     await upload?.done.catch(() => undefined);
     this.update({ previewing: false });
+    this.traceOrigin = null;
     await this.send(commands.cancel());
     await this.send(commands.previewOff());
   }
