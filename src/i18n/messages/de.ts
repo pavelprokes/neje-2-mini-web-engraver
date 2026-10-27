@@ -127,6 +127,15 @@ export const de: Messages = {
   progressFinished: 'Fertig',
   progressCancelled: 'Gestoppt',
   progressFailed: 'Auftrag fehlgeschlagen: {reason}',
+  stopJob: 'Gravur stoppen',
+  phaseUpload: 'Übertragung zum Gerät',
+  phaseBurn: 'Gravieren',
+  phaseWaiting: 'Wartet',
+  phaseDone: 'Fertig',
+  elapsedRemaining: '{elapsed} vergangen, noch etwa {remaining}',
+  elapsed: '{elapsed} vergangen',
+  finishedIn: 'Fertig in {time}',
+  uploadFirst: 'Das Bild wird zuerst an das Gerät übertragen (etwa {time}), dann beginnt das Gravieren.',
   safetyNote:
     'Laserlicht schädigt die Augen und kann Brände verursachen. Tragen Sie eine Laserschutzbrille, lassen Sie das Gerät nie unbeaufsichtigt und wissen Sie, wo sich sein Netzschalter befindet.',
 

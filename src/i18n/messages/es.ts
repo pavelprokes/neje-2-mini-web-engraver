@@ -127,6 +127,15 @@ export const es: Messages = {
   progressFinished: 'Terminado',
   progressCancelled: 'Detenido',
   progressFailed: 'El trabajo ha fallado: {reason}',
+  stopJob: 'Detener grabado',
+  phaseUpload: 'Envío al grabador',
+  phaseBurn: 'Grabado',
+  phaseWaiting: 'En espera',
+  phaseDone: 'Hecho',
+  elapsedRemaining: '{elapsed} transcurrido, quedan unos {remaining}',
+  elapsed: '{elapsed} transcurrido',
+  finishedIn: 'Terminado en {time}',
+  uploadFirst: 'Primero se envía la imagen al grabador (unos {time}) y luego empieza el grabado.',
   safetyNote:
     'La luz láser daña los ojos y puede provocar incendios. Use gafas de protección láser, no deje nunca la máquina desatendida y sepa dónde está su interruptor de alimentación.',
 

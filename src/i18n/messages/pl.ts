@@ -127,6 +127,15 @@ export const pl: Messages = {
   progressFinished: 'Gotowe',
   progressCancelled: 'Zatrzymano',
   progressFailed: 'Zadanie nie powiodło się: {reason}',
+  stopJob: 'Zatrzymaj grawerowanie',
+  phaseUpload: 'Wysyłanie do grawerki',
+  phaseBurn: 'Grawerowanie',
+  phaseWaiting: 'Oczekuje',
+  phaseDone: 'Gotowe',
+  elapsedRemaining: 'Minęło {elapsed}, zostało około {remaining}',
+  elapsed: 'Minęło {elapsed}',
+  finishedIn: 'Gotowe w {time}',
+  uploadFirst: 'Obraz jest najpierw wysyłany do grawerki (około {time}), potem zaczyna się grawerowanie.',
   safetyNote:
     'Światło lasera uszkadza wzrok i może wywołać pożar. Noś okulary ochronne do lasera, nigdy nie zostawiaj urządzenia bez nadzoru i wiedz, gdzie jest jego wyłącznik zasilania.',
 

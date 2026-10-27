@@ -10,10 +10,11 @@ import { fitPadded, renderRaster, type Raster } from '@/lib/imaging/raster';
 import { DEFAULT_JOB_SETTINGS, DEFAULT_WORK_AREA, estimateSeconds, LIMITS, mmToPx, pxToMm, type JobSettings, type WorkArea as Area } from '@/lib/job';
 import { BUILT_IN_PRESETS, userPresetStore } from '@/lib/presets';
 import { motionTestOnConnect } from '@/lib/storage';
-import { packBitmap, type NejeSession, type SessionSnapshot } from '@/lib/protocol';
-import { isWebSerialSupported } from '@/lib/transport/webSerial';
+import { bitmapLength, packBitmap, type NejeSession, type SessionSnapshot } from '@/lib/protocol';
+import { DEFAULT_BAUD_RATE, isWebSerialSupported } from '@/lib/transport/webSerial';
 import { useDebouncedEffect } from './fields';
 import { HistoryPanel } from './HistoryPanel';
+import { JobPhases } from './JobPhases';
 import { AdvancedPanel, AppHeader, EngravePanel, ImagePanel, LaserPanel, PositionPanel } from './panels';
 import { StartDialog } from './StartDialog';
 import { WorkArea } from './WorkArea';
@@ -227,26 +228,13 @@ export function Engraver() {
     const minutes = Math.ceil(seconds / 60);
     return minutes < 90 ? t('durationMinutes', { n: minutes }) : t('durationHours', { h: Math.floor(minutes / 60), m: minutes % 60 });
   };
-  const estimate = raster ? t('estimate', { time: duration(estimateSeconds(raster.burnedDots, settings.burnTimeMs)) }) : null;
+  const burnSeconds = raster ? estimateSeconds(raster.burnedDots, settings.burnTimeMs) : null;
+  const estimate = burnSeconds !== null ? t('estimate', { time: duration(burnSeconds) }) : null;
+  // 8N1 framing: 10 bits on the wire per byte
+  const uploadSeconds = raster ? (bitmapLength(raster.rect.width, raster.rect.height) * 10) / DEFAULT_BAUD_RATE : null;
 
-  const progress = (() => {
-    switch (job.stage) {
-      case 'uploading': {
-        const percent = Math.round((job.sent / job.total) * 100);
-        return { value: percent, text: t('progressUploading', { percent }) };
-      }
-      case 'burning':
-        return { value: job.percent, text: t('progressBurning', { percent: job.percent }) };
-      case 'finished':
-        return { value: 100, text: t('progressFinished') };
-      case 'cancelled':
-        return { value: 0, text: t('progressCancelled') };
-      case 'failed':
-        return { value: 0, text: t('progressFailed', { reason: t(errorKeyFor(job.code)) }) };
-      default:
-        return { value: 0, text: t('progressNone') };
-    }
-  })();
+  const outcome =
+    job.stage === 'cancelled' ? t('progressCancelled') : job.stage === 'failed' ? t('progressFailed', { reason: t(errorKeyFor(job.code)) }) : null;
 
   // announced once per stage, unlike the percentage text which changes constantly
   const stageText = (
@@ -256,7 +244,7 @@ export function Engraver() {
       burning: t('statusWorking'),
       finished: t('progressFinished'),
       cancelled: t('progressCancelled'),
-      failed: progress.text,
+      failed: outcome ?? '',
     } as const
   )[job.stage];
 
@@ -349,15 +337,14 @@ export function Engraver() {
           <EngravePanel
             connected={connected}
             hasMotif={!!raster}
-            jobActive={jobActive}
             busy={jobActive || motionTesting}
             canPause={connected && job.stage !== 'uploading' && (snapshot?.machine === 'working' || snapshot?.machine === 'paused')}
             stageText={stageText}
             paused={snapshot?.machine === 'paused'}
             previewing={!!snapshot?.previewing}
-            progress={job.stage === 'none' ? null : progress.value}
-            progressText={progress.text}
             estimate={estimate}
+            progress={<JobPhases job={job} burnEstimateSeconds={burnSeconds} duration={duration} outcome={outcome} />}
+            onStop={stop}
             onTrace={() => traceRect && void run((s) => (s.getSnapshot().previewing ? s.previewOff() : s.previewOn(traceRect)))}
             onPauseResume={() => void run((s) => (s.getSnapshot().machine === 'paused' ? s.resume() : s.pause()))}
             onStart={() => setConfirming(true)}
@@ -431,7 +418,7 @@ export function Engraver() {
             power: settings.power,
             time: settings.burnTimeMs,
           })}
-          estimate={estimate ?? ''}
+          estimate={[uploadSeconds !== null ? t('uploadFirst', { time: duration(uploadSeconds) }) : '', estimate ?? ''].join(' ').trim()}
           onConfirm={() => void startJob()}
           onClose={() => setConfirming(false)}
         />

@@ -19,7 +19,9 @@ async function loadImage(page: Page, name = 'photo.png') {
   await expect(page.getByText(new RegExp(name.replace('.', '\\.')))).toBeVisible();
 }
 
-const progress = (page: Page) => page.getByRole('progressbar', { name: 'Job progress' });
+const progress = (page: Page) => page.getByRole('progressbar', { name: 'Engraving' });
+const uploadBar = (page: Page) => page.getByRole('progressbar', { name: 'Sending to engraver' });
+const outcome = (page: Page) => page.locator('.phases');
 
 const errors: string[] = [];
 test.beforeEach(async ({ page }) => {
@@ -122,19 +124,26 @@ test.describe('engraving with the simulator', () => {
     await expect(start).toBeDisabled();
     await dialog.getByLabel('The material is in place and nothing flammable is nearby').check();
     await start.click();
-    await expect(progress(page)).toHaveAttribute('aria-valuetext', /^Engraving \d+ %$/);
+    await expect(uploadBar(page)).toHaveAttribute('aria-valuetext', 'Done'); // phase 1 complete…
+    await expect(progress(page)).toHaveAttribute('aria-valuetext', /^Engraving \d+ %$/); // …phase 2 running
     await expect(page.getByRole('status', { name: 'Engraver status' })).toHaveText('Engraving');
-    await expect(page.getByRole('button', { name: 'Stop' })).toBeFocused();
+    await expect(page.getByRole('button', { name: 'Stop', exact: true })).toBeFocused();
     await expect(page.getByRole('button', { name: 'Disconnect' })).toBeDisabled();
     await expect(page.getByLabel('Power')).toBeDisabled();
     await expect(progress(page)).toHaveAttribute('aria-valuetext', 'Done', { timeout: 15_000 });
+    await expect(outcome(page)).toContainText(/Done in \d+:\d\d/);
     await expect(page.getByRole('button', { name: 'Open photo.png with its settings' })).toBeVisible();
   });
 
   test('stop button and Esc cancel a running job', async ({ page }) => {
     await connectSimulator(page);
     await loadImage(page);
-    for (const stop of [() => page.getByRole('button', { name: 'Stop' }).click(), () => page.keyboard.press('Escape')]) {
+    const stops = [
+      () => page.getByRole('button', { name: 'Stop', exact: true }).click(), // header
+      () => page.getByRole('button', { name: 'Stop engraving' }).click(), // red button next to Trace frame
+      () => page.keyboard.press('Escape'),
+    ];
+    for (const stop of stops) {
       await page.getByRole('button', { name: 'Start engraving…' }).click();
       const dialog = page.getByRole('dialog');
       await dialog.getByRole('checkbox').first().check();
@@ -142,7 +151,7 @@ test.describe('engraving with the simulator', () => {
       await dialog.getByRole('button', { name: 'Start', exact: true }).click();
       await expect(progress(page)).toHaveAttribute('aria-valuetext', /^Engraving \d+ %$/);
       await stop();
-      await expect(progress(page)).toHaveAttribute('aria-valuetext', 'Stopped');
+      await expect(outcome(page)).toContainText('Stopped');
       await expect(page.getByRole('status', { name: 'Engraver status' })).toHaveText('Ready');
     }
   });
@@ -293,7 +302,7 @@ test.describe('engraving with the simulator', () => {
     await connectSimulator(page);
     await page.getByRole('button', { name: 'Disconnect' }).click();
     await expect(page.getByRole('status', { name: 'Engraver status' })).toHaveText('Not connected');
-    await expect(page.getByRole('button', { name: 'Stop' })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Stop', exact: true })).toBeDisabled();
   });
 });
 

@@ -127,6 +127,15 @@ export const it: Messages = {
   progressFinished: 'Completato',
   progressCancelled: 'Interrotto',
   progressFailed: 'Lavoro non riuscito: {reason}',
+  stopJob: 'Ferma incisione',
+  phaseUpload: 'Invio all’incisore',
+  phaseBurn: 'Incisione',
+  phaseWaiting: 'In attesa',
+  phaseDone: 'Fatto',
+  elapsedRemaining: '{elapsed} trascorso, mancano circa {remaining}',
+  elapsed: '{elapsed} trascorso',
+  finishedIn: 'Completato in {time}',
+  uploadFirst: 'L’immagine viene prima inviata all’incisore (circa {time}), poi inizia l’incisione.',
   safetyNote:
     'La luce laser danneggia gli occhi e può causare incendi. Indossi occhiali di protezione laser, non lasci mai la macchina incustodita e sappia dove si trova il suo interruttore di alimentazione.',
 
