@@ -286,8 +286,9 @@ test.describe('engraving with the simulator', () => {
     await page.getByLabel('New preset name').fill('Walnut 3 mm');
     await page.getByRole('button', { name: 'Save preset' }).click();
     await page.reload();
-    await page.getByLabel('Material preset').selectOption({ label: 'Light wood (starting point)' });
+    await page.getByLabel('Material preset').selectOption({ label: 'Wood, paper (NEJE reference)' });
     await expect(page.getByLabel('Power')).toHaveValue('100');
+    await expect(page.getByLabel('Burn time per dot')).toHaveValue('30');
     await page.getByLabel('Material preset').selectOption({ label: 'Walnut 3 mm' });
     await expect(page.getByLabel('Power')).toHaveValue('42');
   });
@@ -447,14 +448,14 @@ test.describe('layout, tabs and new tools', () => {
     await connectSimulator(page);
     await page.getByText('Advanced').click();
     await page.getByLabel('Show serial traffic').check();
-    const speed = page.getByLabel('Speed mode (experimental)');
-    await expect(speed).toHaveValue('2'); // what the Master 2 Mini reports
-    await expect(speed.locator('option')).toHaveText(['Slow (better quality)', 'Fast', 'As set on the machine (2)']);
+    const speed = page.getByLabel('Motor speed');
+    await expect(speed).toHaveValue('2'); // what the Master 2 Mini reports: Medium
+    await expect(speed.locator('option')).toHaveText(['Slowest', 'Slow', 'Medium (default)', 'Fast']);
     await page.getByLabel('Motion detection').selectOption({ label: 'Medium' });
     const log = page.getByRole('region', { name: 'Serial traffic in hexadecimal' });
     await expect(log).toContainText('→ ff aa 0b 03 01 07 50 0a 02 02 55'); // sensitivity 2, rest unchanged
-    await speed.selectOption('0');
-    await expect(log).toContainText('→ ff aa 0b 03 01 07 50 0a 02 00 55'); // mode 0 = slow
+    await speed.selectOption('1');
+    await expect(log).toContainText('→ ff aa 0b 03 01 07 50 0a 02 01 55'); // speed 1 = slow
   });
 
   test('help explains connection and quality problems', async ({ page }) => {
