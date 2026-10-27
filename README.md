@@ -23,8 +23,11 @@ works offline. Built and tested with a **NEJE Master 2 Mini**.
 - **History:** every job is saved with its image and all settings. Open an entry, reuse only its
   settings, or drop a new image in to swap the motif and keep everything else.
 - **Material presets** (built-in starting points plus your own) and a rough job time estimate.
-- **Connection check:** after connecting, the motors play a short jingle and trace a 5 mm square,
-  with the laser off. Both can be switched off.
+- **Head position:** after connecting, the head goes home (0, 0) and traces a 5 mm square with the
+  laser off, so the app knows where the head is. The position is shown on the work area and kept up to
+  date with every move. The Master 2 Mini has no limit switches, so home is where the head was when
+  the engraver was switched on. Put the head in the top-left corner before you switch it on. The
+  automatic check can be switched off, and **Go home** and **Test motion** are also available as buttons.
 - **8 languages** (English, Čeština, Deutsch, Français, Español, Italiano, Polski, 中文). The app picks
   the browser language and offers a manual switch.
 - **Accessible:** built to WCAG 2.2 AA and checked with axe in light and dark mode. It works with
@@ -47,7 +50,7 @@ works offline. Built and tested with a **NEJE Master 2 Mini**.
 
 | Area | Status |
 |---|---|
-| Connect, identify, telemetry, reconnect, head moves, motor jingle | ✅ verified on a Master 2 Mini (automated hardware test) |
+| Connect, identify, telemetry, reconnect, homing, head moves | ✅ verified on a Master 2 Mini (automated hardware test) |
 | Laser parameters | Sent to hardware without error; effect on burns not yet measured |
 | Job upload, trace frame, pause/resume, cancel | Implemented to the protocol observed in the vendor app, covered by simulator tests, **not yet burned on hardware** |
 | Odd-row bit order | Two variants selectable (*Advanced*) until a calibration burn decides |

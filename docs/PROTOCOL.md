@@ -45,6 +45,10 @@ parsers must resynchronise on `FF AA` and validate the trailer.
 | Start job | `FF AA 14 04 01 01 50 <x> <y> <w₈> <h> <bytes BE32> 55` | 🔍 |
 
 - Coordinates are device pixels from the top-left; the pixel pitch is reported by the device (75 µm).
+- Moves are absolute and get no reply ✅, and the device never reports the head position outside a job.
+  The Master 2 family has no limit switches, so `(0, 0)` is where the head was at power-on ❓ (the head
+  returns there after `move 0,0` ✅). The app therefore homes with `move 0,0` and tracks the last commanded
+  position. Jobs and frame tracing move the head on their own and make the position unknown again.
 - `w₈` is the job width rounded up to a multiple of 8; `bytes = w₈ × h / 8`.
 - `time` is the dwell per dot in ms. The vendor app encodes it as `(t + ⌊t/255⌋) & 0xFF`, the identity below 255.
 - `level`, `sensitivity` and `mode` are device settings (idle pointer brightness, motion-detection

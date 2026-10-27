@@ -45,7 +45,7 @@ async function attachBridge(page: Page, sent: Sent[]) {
   return () => new Promise<void>((resolve) => (port.isOpen ? port.close(() => resolve()) : resolve()));
 }
 
-test('identifies, reconnects and runs the motion test on a real engraver', async ({ page }) => {
+test('identifies, homes, reconnects and runs the motion test on a real engraver', async ({ page }) => {
   test.setTimeout(60_000);
   const sent: Sent[] = [];
   const closePort = await attachBridge(page, sent);
@@ -53,14 +53,15 @@ test('identifies, reconnects and runs the motion test on a real engraver', async
     await page.goto('/');
     const status = page.getByRole('status', { name: 'Engraver status' });
 
-    // first connection: jingle + motion test run automatically by default
+    // first connection: homing + motion test run automatically by default
     await page.getByRole('button', { name: 'Connect engraver' }).click();
     await expect(status).toHaveText('Ready', { timeout: 10_000 });
     await expect(page.getByText(/NEJE Master 2 Mini, firmware \d+/)).toBeVisible();
     await expect(page.getByText(/Laser \d+ °C/)).toBeVisible({ timeout: 5_000 });
     await expect(page.getByRole('button', { name: 'Test motion' })).toBeEnabled({ timeout: 10_000 });
+    await expect(page.getByText('Head at X 0 mm, Y 0 mm')).toBeVisible();
     const moves = sent.filter((f) => f[3] === 0x05 && f[6] === 1);
-    expect(moves.length).toBeGreaterThan(5); // jingle notes + square (start + 4 corners)
+    expect(moves.length).toBe(6); // home + square (start + 4 corners)
     const last = moves.at(-1)!;
     expect([(last[7]! << 8) | last[8]!, (last[9]! << 8) | last[10]!]).toEqual([0, 0]); // back home
 
@@ -68,12 +69,14 @@ test('identifies, reconnects and runs the motion test on a real engraver', async
     await page.getByRole('button', { name: 'Disconnect' }).click();
     await expect(status).toHaveText('Not connected');
     await page.getByText('Advanced').click();
-    await page.getByLabel('Play a jingle after connecting').uncheck();
-    await page.getByLabel('Test motion after connecting').uncheck();
+    await page.getByLabel('Go home and test motion after connecting').uncheck();
     const before = sent.length;
     await page.getByRole('button', { name: 'Connect engraver' }).click();
     await expect(status).toHaveText('Ready', { timeout: 10_000 });
     expect(sent.slice(before).filter((f) => f[3] === 0x05)).toEqual([]);
+    await expect(page.getByText('Head position unknown. Use “Go home” to set it.')).toBeVisible();
+    await page.getByRole('button', { name: 'Go home' }).click();
+    await expect(page.getByText('Head at X 0 mm, Y 0 mm')).toBeVisible();
 
     // manual test button
     await page.getByRole('button', { name: 'Test motion' }).click();

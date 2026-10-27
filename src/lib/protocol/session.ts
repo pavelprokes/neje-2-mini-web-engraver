@@ -37,6 +37,12 @@ export interface SessionSnapshot {
   readonly temperatureC: number | null;
   readonly batteryPercent: number | null;
   readonly previewing: boolean;
+  /**
+   * Last commanded head position in device pixels, `null` while unknown. The device never
+   * reports where the head is outside a job, so this is tracked from the moves sent; jobs and
+   * frame tracing move the head on their own and reset it to unknown until the next `home()`.
+   */
+  readonly head: Point | null;
   readonly job: JobProgress;
   /** Set when the link closed unexpectedly. */
   readonly closeReason: NejeErrorCode | null;
@@ -45,12 +51,6 @@ export interface SessionSnapshot {
 export interface Point {
   readonly x: number;
   readonly y: number;
-}
-
-/** One note of a motor rhythm: travel distance (0 = rest) and time until the next note. */
-export interface RhythmNote {
-  readonly lengthPx: number;
-  readonly durationMs: number;
 }
 
 /** The laser parameters a user controls; the rest stay at their device values. */
@@ -79,6 +79,7 @@ const INITIAL: SessionSnapshot = {
   temperatureC: null,
   batteryPercent: null,
   previewing: false,
+  head: null,
   job: { stage: 'none' },
   closeReason: null,
 };
@@ -263,7 +264,7 @@ export class NejeSession {
     this.assertInside(rect);
     if (this.upload || this.snapshot.machine !== 'idle') throw new NejeError('BUSY');
     await this.send(commands.previewOn(rect));
-    this.update({ previewing: true });
+    this.update({ previewing: true, head: null });
   }
 
   async previewOff(): Promise<void> {
@@ -276,6 +277,16 @@ export class NejeSession {
   async moveTo(x: number, y: number): Promise<void> {
     this.assertInside({ x, y, width: 1, height: 1 }, false);
     await this.send(commands.moveTo(x, y));
+    this.update({ head: { x, y } });
+  }
+
+  /**
+   * Moves the head to the machine origin (0, 0) so its position is known. The Master 2 family has
+   * no limit switches: the origin is wherever the head was when the engraver was switched on.
+   */
+  async home(): Promise<void> {
+    if (this.busy) throw new NejeError('BUSY');
+    await this.moveTo(0, 0);
   }
 
   /**
@@ -299,7 +310,7 @@ export class NejeSession {
     }
   }
 
-  /** Motion self-test: traces a square that starts and ends at `origin`. */
+  /** Motion self-test: traces a square that starts and ends at `origin` (home by default). */
   traceSquare(sizePx: number, origin: Point = { x: 0, y: 0 }, legMs = 800): Promise<boolean> {
     const info = this.requireReady();
     const size = Math.max(1, Math.min(sizePx, info.width - origin.x - 1, info.height - origin.y - 1));
@@ -311,34 +322,6 @@ export class NejeSession {
       { x, y: y + size, delayMs: legMs },
       { x, y, delayMs: legMs },
     ]);
-  }
-
-  /**
-   * Plays a rhythm with the stepper motors: each note moves the head along X (alternating
-   * direction), so a note's onset is a short motor sound. Pitch is fixed by the firmware's
-   * travel speed. Starts and ends at `origin`.
-   */
-  playRhythm(notes: readonly RhythmNote[], origin: Point = { x: 0, y: 0 }): Promise<boolean> {
-    const info = this.requireReady();
-    const steps: { x: number; y: number; delayMs: number }[] = [{ ...origin, delayMs: 0 }];
-    const maxX = info.width - 1;
-    let x = origin.x;
-    let forward = false;
-    let wait = 0;
-    for (const note of notes) {
-      if (note.lengthPx > 0) {
-        // alternate direction so the head stays near the origin; every note travels its own length
-        forward = !forward;
-        if (!forward && x - note.lengthPx < origin.x) forward = true;
-        if (forward && x + note.lengthPx > maxX) forward = false;
-        x = Math.max(origin.x, Math.min(maxX, x + (forward ? note.lengthPx : -note.lengthPx)));
-        steps.push({ x, y: origin.y, delayMs: wait });
-        wait = 0;
-      }
-      wait += note.durationMs;
-    }
-    if (x !== origin.x) steps.push({ ...origin, delayMs: wait });
-    return this.runMoves(steps);
   }
 
   async pause(): Promise<void> {
@@ -387,6 +370,7 @@ export class NejeSession {
     abortIfStopped();
 
     const accepted = this.waitFor('jobAccepted', this.jobAcceptTimeoutMs);
+    this.update({ head: null });
     await this.send(commands.startJob(rect));
     let reply: MessageOf<'jobAccepted'>;
     try {

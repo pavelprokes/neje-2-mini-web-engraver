@@ -9,6 +9,8 @@ interface Props {
   readonly area: Area;
   readonly raster: Raster | null;
   readonly highlight: boolean;
+  /** Known head position in device pixels, drawn as a crosshair. */
+  readonly head: { readonly x: number; readonly y: number } | null;
   /** Requests a new top-left position in device pixels (the caller clamps). */
   readonly onMove: (x: number, y: number) => void;
   /** Relative keyboard move in millimetres, applied to the latest state by the caller. */
@@ -31,7 +33,7 @@ function useDotImage(raster: Raster | null) {
   }, [raster]);
 }
 
-export function WorkArea({ area, raster, highlight, onMove, onNudge }: Props) {
+export function WorkArea({ area, raster, highlight, head, onMove, onNudge }: Props) {
   const { t, formatNumber } = useI18n();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drag = useRef<{ startX: number; startY: number; x: number; y: number } | null>(null);
@@ -67,15 +69,32 @@ export function WorkArea({ area, raster, highlight, onMove, onNudge }: Props) {
     }
     ctx.stroke();
 
-    if (!raster || !dots) return;
-    const { x, y, width, height } = raster.rect;
-    ctx.imageSmoothingEnabled = true;
-    ctx.drawImage(dots, x, y, width, height);
-    ctx.setLineDash([6 / scale, 4 / scale]);
-    ctx.lineWidth = 2 / scale;
-    ctx.strokeStyle = highlight ? '#b45309' : '#c81e1e';
-    ctx.strokeRect(x, y, width, height);
-  }, [area, scale, raster, dots, highlight]);
+    if (raster && dots) {
+      const { x, y, width, height } = raster.rect;
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(dots, x, y, width, height);
+      ctx.setLineDash([6 / scale, 4 / scale]);
+      ctx.lineWidth = 2 / scale;
+      ctx.strokeStyle = highlight ? '#b45309' : '#c81e1e';
+      ctx.strokeRect(x, y, width, height);
+    }
+
+    if (head) {
+      const r = 14 / scale;
+      ctx.setLineDash([]);
+      ctx.lineWidth = 2 / scale;
+      ctx.strokeStyle = '#1d4ed8';
+      ctx.beginPath();
+      ctx.moveTo(head.x - r, head.y);
+      ctx.lineTo(head.x + r, head.y);
+      ctx.moveTo(head.x, head.y - r);
+      ctx.lineTo(head.x, head.y + r);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(head.x, head.y, r / 2, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }, [area, scale, raster, dots, highlight, head]);
 
   const toDevice = (clientDelta: number) => {
     const shown = canvasRef.current?.getBoundingClientRect().width || 1;

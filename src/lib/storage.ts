@@ -52,4 +52,3 @@ export function createLocalStore<T>(key: string, fallback: T, parse: (raw: unkno
 
 export const motionTestOnConnect = createLocalStore('neje.motionTestOnConnect.v1', true, (v) => (typeof v === 'boolean' ? v : undefined));
 
-export const jingleOnConnect = createLocalStore('neje.jingleOnConnect.v1', true, (v) => (typeof v === 'boolean' ? v : undefined));

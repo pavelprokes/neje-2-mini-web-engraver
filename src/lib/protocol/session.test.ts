@@ -199,24 +199,22 @@ describe('NejeSession', () => {
     expect(await interrupted).toBe(false);
   });
 
-  it('plays a rhythm as alternating X moves that end where they started', async () => {
-    const { sim, session } = setup();
+  it('tracks the head position from homing and moves until a job takes over', async () => {
+    const { session } = setup();
     await session.connect();
-    const before = sim.received.length;
-    const notes = [
-      { lengthPx: 40, durationMs: 2 },
-      { lengthPx: 0, durationMs: 2 }, // rest
-      { lengthPx: 20, durationMs: 2 },
-      { lengthPx: 20, durationMs: 2 },
-    ];
-    expect(await session.playRhythm(notes, { x: 10, y: 5 })).toBe(true);
-    const xs = sim.received.slice(before).map((b) => {
-      expect([b[3], b[6]]).toEqual([0x05, 1]); // moves only
-      expect((b[9]! << 8) | b[10]!).toBe(5); // never leaves the row
-      return (b[7]! << 8) | b[8]!;
-    });
-    expect(xs).toEqual([10, 50, 30, 50, 10]); // each note travels its own length
-    expect(xs.slice(1).map((v, i) => Math.abs(v - xs[i]!))).toEqual([40, 20, 20, 40]);
+    expect(session.getSnapshot().head).toBeNull();
+    await session.home();
+    expect(session.getSnapshot().head).toEqual({ x: 0, y: 0 });
+    await session.moveTo(120, 40);
+    expect(session.getSnapshot().head).toEqual({ x: 120, y: 40 });
+    await session.traceSquare(10, { x: 0, y: 0 }, 1);
+    expect(session.getSnapshot().head).toEqual({ x: 0, y: 0 });
+    await session.previewOn({ x: 0, y: 0, width: 8, height: 8 });
+    expect(session.getSnapshot().head).toBeNull();
+    await session.stop();
+    await session.home();
+    await session.engrave({ x: 0, y: 0, width: 8, height: 1 }, new Uint8Array(1));
+    expect(session.getSnapshot().head).toBeNull();
   });
 
   it('marks the link closed when the cable is pulled', async () => {

@@ -174,14 +174,16 @@ interface PositionPanelProps {
   readonly canTestMotion: boolean;
   readonly motionTesting: boolean;
   readonly onTestMotion: () => void;
-  readonly onPlayJingle: () => void;
+  readonly onGoHome: () => void;
+  /** Last known head position, or why it is unknown; `null` when not connected. */
+  readonly headText: string | null;
 }
 
-export function PositionPanel({ xMm, yMm, patch, onCenter, canMoveHead, onMoveHead, canTestMotion, motionTesting, onTestMotion, onPlayJingle }: PositionPanelProps) {
+export function PositionPanel({ xMm, yMm, patch, onCenter, canMoveHead, onMoveHead, canTestMotion, motionTesting, onTestMotion, onGoHome, headText }: PositionPanelProps) {
   const { t } = useI18n();
   const hintId = useId();
   const motionHintId = useId();
-  const jingleHintId = useId();
+  const homeHintId = useId();
   return (
     <Panel title={t('positionHeading')}>
       <NumberField label={t('positionX')} value={xMm} min={0} onChange={(v) => patch({ xMm: v })} />
@@ -200,19 +202,24 @@ export function PositionPanel({ xMm, yMm, patch, onCenter, canMoveHead, onMoveHe
       <p id={hintId} className="hint">
         {t('moveHeadHint')}
       </p>
+      {headText && (
+        <p className="hint" aria-live="polite">
+          <strong>{headText}</strong>
+        </p>
+      )}
       <div className="row">
+        <button type="button" onClick={onGoHome} disabled={!canTestMotion} aria-describedby={homeHintId}>
+          {t('goHome')}
+        </button>
         <button type="button" onClick={onTestMotion} disabled={!canTestMotion} aria-describedby={motionHintId}>
           {motionTesting ? t('motionTestRunning') : t('motionTest')}
         </button>
-        <button type="button" onClick={onPlayJingle} disabled={!canTestMotion} aria-describedby={jingleHintId}>
-          {t('jinglePlay')}
-        </button>
       </div>
+      <p id={homeHintId} className="hint">
+        {t('goHomeHint')}
+      </p>
       <p id={motionHintId} className="hint">
         {t('motionTestHint')}
-      </p>
-      <p id={jingleHintId} className="hint">
-        {t('jingleHint')}
       </p>
     </Panel>
   );
@@ -348,14 +355,12 @@ interface AdvancedPanelProps {
   readonly patch: Patch;
   readonly autoMotionTest: boolean;
   readonly onAutoMotionTest: (enabled: boolean) => void;
-  readonly autoJingle: boolean;
-  readonly onAutoJingle: (enabled: boolean) => void;
   readonly showTraffic: boolean;
   readonly onShowTraffic: (show: boolean) => void;
   readonly traffic: readonly string[];
 }
 
-export function AdvancedPanel({ oddRows, patch, autoMotionTest, onAutoMotionTest, autoJingle, onAutoJingle, showTraffic, onShowTraffic, traffic }: AdvancedPanelProps) {
+export function AdvancedPanel({ oddRows, patch, autoMotionTest, onAutoMotionTest, showTraffic, onShowTraffic, traffic }: AdvancedPanelProps) {
   const { t } = useI18n();
   const hintId = useId();
   return (
@@ -375,7 +380,6 @@ export function AdvancedPanel({ oddRows, patch, autoMotionTest, onAutoMotionTest
         <p id={hintId} className="hint">
           {t('oddRowsHint')}
         </p>
-        <CheckboxField label={t('jingleOnConnect')} checked={autoJingle} onChange={onAutoJingle} />
         <CheckboxField label={t('motionTestOnConnect')} checked={autoMotionTest} onChange={onAutoMotionTest} />
         <CheckboxField label={t('trafficLog')} checked={showTraffic} onChange={onShowTraffic} />
         {showTraffic && (

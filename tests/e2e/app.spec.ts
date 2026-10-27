@@ -24,10 +24,9 @@ const progress = (page: Page) => page.getByRole('progressbar', { name: 'Job prog
 const errors: string[] = [];
 test.beforeEach(async ({ page }) => {
   errors.length = 0;
-  // the connect routine (jingle + motion test) is covered by its own test below
+  // the connect routine (homing + motion test) is covered by its own test below
   await page.addInitScript(() => {
     if (sessionStorage.getItem('e2e-routine') === 'on') return;
-    localStorage.setItem('neje.jingleOnConnect.v1', 'false');
     localStorage.setItem('neje.motionTestOnConnect.v1', 'false');
   });
   page.on('pageerror', (e) => errors.push(e.message));
@@ -181,10 +180,9 @@ test.describe('engraving with the simulator', () => {
     await expect(page.getByLabel('Power')).toHaveValue('42');
   });
 
-  test('connecting plays the jingle and tests motion, blocking a start meanwhile', async ({ page }) => {
+  test('connecting homes the head and tests motion, blocking a start meanwhile', async ({ page }) => {
     await page.evaluate(() => {
       sessionStorage.setItem('e2e-routine', 'on');
-      localStorage.removeItem('neje.jingleOnConnect.v1');
       localStorage.removeItem('neje.motionTestOnConnect.v1');
     });
     await page.reload();
@@ -194,6 +192,18 @@ test.describe('engraving with the simulator', () => {
     await expect(page.getByRole('button', { name: 'Start engraving…' })).toBeDisabled();
     await expect(page.getByRole('button', { name: 'Start engraving…' })).toBeEnabled({ timeout: 15_000 });
     await expect(page.getByRole('button', { name: 'Test motion', exact: true })).toBeEnabled();
+    await expect(page.getByText('Head at X 0 mm, Y 0 mm')).toBeVisible();
+  });
+
+  test('head position is unknown until homed, then follows moves', async ({ page }) => {
+    await connectSimulator(page);
+    await expect(page.getByText('Head position unknown. Use “Go home” to set it.')).toBeVisible();
+    await page.getByRole('button', { name: 'Go home' }).click();
+    await expect(page.getByText('Head at X 0 mm, Y 0 mm')).toBeVisible();
+    await loadImage(page);
+    await page.getByLabel('X from left (mm)').fill('20');
+    await page.getByRole('button', { name: 'Move head to image' }).click();
+    await expect(page.getByText('Head at X 20 mm, Y 0 mm')).toBeVisible();
   });
 
   test('unplugging the engraver is reported', async ({ page }) => {

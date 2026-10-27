@@ -9,8 +9,7 @@ import { decodeImage, ImageDecodeError, type ImageAsset } from '@/lib/imaging/de
 import { renderRaster, type Raster } from '@/lib/imaging/raster';
 import { DEFAULT_JOB_SETTINGS, DEFAULT_WORK_AREA, estimateSeconds, LIMITS, mmToPx, pxToMm, type JobSettings, type WorkArea as Area } from '@/lib/job';
 import { BUILT_IN_PRESETS, userPresetStore } from '@/lib/presets';
-import { CONNECT_JINGLE, toRhythm } from '@/lib/jingle';
-import { jingleOnConnect, motionTestOnConnect } from '@/lib/storage';
+import { motionTestOnConnect } from '@/lib/storage';
 import { packBitmap, type NejeSession, type SessionSnapshot } from '@/lib/protocol';
 import { isWebSerialSupported } from '@/lib/transport/webSerial';
 import { useDebouncedEffect } from './fields';
@@ -71,7 +70,6 @@ export function Engraver() {
   const userPresets = useSyncExternalStore(userPresetStore.subscribe, userPresetStore.getSnapshot, userPresetStore.getServerSnapshot);
   const [confirming, setConfirming] = useState(false);
   const [motionTesting, setMotionTesting] = useState(false);
-  const autoJingle = useSyncExternalStore(jingleOnConnect.subscribe, jingleOnConnect.getSnapshot, jingleOnConnect.getServerSnapshot);
   const autoMotionTest = useSyncExternalStore(motionTestOnConnect.subscribe, motionTestOnConnect.getSnapshot, motionTestOnConnect.getServerSnapshot);
 
   const patch = useCallback((p: Partial<JobSettings>) => setSettings((s) => ({ ...s, ...p })), []);
@@ -165,6 +163,7 @@ export function Engraver() {
       setAnnouncement(t('motionTestRunning'));
       try {
         const area = { width: info.width, height: info.height, pixelPitchUm: info.pixelPitchUm };
+        await s.home();
         if (await s.traceSquare(mmToPx(MOTION_TEST_MM, area))) setAnnouncement(t('motionTestDone'));
       } finally {
         setMotionTesting(false);
@@ -172,23 +171,10 @@ export function Engraver() {
     },
     [t],
   );
-  const playJingle = useCallback(async (s: NejeSession) => {
-    const info = s.getSnapshot().info;
-    if (!info) return;
-    const area = { width: info.width, height: info.height, pixelPitchUm: info.pixelPitchUm };
-    setMotionTesting(true);
-    try {
-      await s.playRhythm(toRhythm(CONNECT_JINGLE, (mm) => mmToPx(mm, area)));
-    } finally {
-      setMotionTesting(false);
-    }
-  }, []);
-
   const afterConnect = async (s: NejeSession) => {
     // adopt what the machine is set to instead of silently overwriting it with UI defaults
     const params = s.getSnapshot().params ?? (await s.waitFor('params', 1000).then((m) => m.params, () => null));
     if (params) patch({ power: clamp(params.power, LIMITS.power), burnTimeMs: clamp(params.burnTimeMs, LIMITS.burnTimeMs) });
-    if (autoJingle) await playJingle(s);
     if (autoMotionTest) await testMotion(s);
   };
   const connect = (kind: 'serial' | 'simulator') => void device.connect(kind, afterConnect);
@@ -271,6 +257,9 @@ export function Engraver() {
     } as const
   )[job.stage];
 
+  const head = snapshot?.head;
+  const headText = !connected ? null : head ? t('headPosition', { x: mm(head.x), y: mm(head.y) }) : t('headUnknown');
+
   const deviceMeta = info
     ? [
         t('deviceSummary', { model: info.model ?? t('unknownModel', { id: info.modelId }), firmware: info.firmware }),
@@ -338,7 +327,8 @@ export function Engraver() {
             canTestMotion={connected && !jobActive && !motionTesting}
             motionTesting={motionTesting}
             onTestMotion={() => void run(testMotion)}
-            onPlayJingle={() => void run(playJingle)}
+            onGoHome={() => void run((s) => s.home())}
+            headText={headText}
           />
           <LaserPanel
             power={settings.power}
@@ -382,8 +372,6 @@ export function Engraver() {
             patch={patch}
             autoMotionTest={autoMotionTest}
             onAutoMotionTest={motionTestOnConnect.set}
-            autoJingle={autoJingle}
-            onAutoJingle={jingleOnConnect.set}
             showTraffic={showTraffic}
             onShowTraffic={setShowTraffic}
             traffic={device.traffic}
@@ -395,6 +383,7 @@ export function Engraver() {
             area={area}
             raster={raster}
             highlight={!!snapshot?.previewing}
+            head={connected ? (snapshot?.head ?? null) : null}
             onMove={(x, y) => patch({ xMm: Math.max(0, pxToMm(x, area)), yMm: Math.max(0, pxToMm(y, area)) })}
             onNudge={(dx, dy) => {
               if (!raster) return;
