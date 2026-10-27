@@ -120,8 +120,6 @@ export const cs: Messages = {
   durationSeconds: '{n} s',
   durationMinutes: '{n} min',
   durationHours: '{h} h {m} min',
-  progressLabel: 'Průběh úlohy',
-  progressNone: 'Neběží žádná úloha',
   progressUploading: 'Odesílám data {percent} %',
   progressBurning: 'Gravíruji {percent} %',
   progressFinished: 'Hotovo',
@@ -134,7 +132,8 @@ export const cs: Messages = {
   phaseDone: 'Hotovo',
   elapsedRemaining: 'Uplynulo {elapsed}, zbývá asi {remaining}',
   elapsed: 'Uplynulo {elapsed}',
-  finishedIn: 'Hotovo za {time}',
+  finishesAround: 'hotovo kolem {time}',
+  finishedAt: 'Dokončeno v {time}, trvalo {duration}',
   uploadFirst: 'Obrázek se nejdřív odešle do gravírky (asi {time}), pak začne gravírování.',
   safetyNote:
     'Laserové světlo poškozuje zrak a může způsobit požár. Noste ochranné brýle proti laseru, stroj nenechávejte bez dozoru a vězte, kde je jeho vypínač.',

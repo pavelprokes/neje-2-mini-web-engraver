@@ -119,8 +119,6 @@ export const en = {
   durationSeconds: '{n} s',
   durationMinutes: '{n} min',
   durationHours: '{h} h {m} min',
-  progressLabel: 'Job progress',
-  progressNone: 'No job running',
   progressUploading: 'Sending data {percent} %',
   progressBurning: 'Engraving {percent} %',
   progressFinished: 'Done',
@@ -133,7 +131,8 @@ export const en = {
   phaseDone: 'Done',
   elapsedRemaining: '{elapsed} elapsed, about {remaining} left',
   elapsed: '{elapsed} elapsed',
-  finishedIn: 'Done in {time}',
+  finishesAround: 'expected to finish around {time}',
+  finishedAt: 'Finished at {time}, took {duration}',
   uploadFirst: 'The image is sent to the engraver first (about {time}), then engraving starts.',
   safetyNote:
     'Laser light damages eyes and can start fires. Wear laser safety goggles, never leave the machine unattended and know where its power switch is.',

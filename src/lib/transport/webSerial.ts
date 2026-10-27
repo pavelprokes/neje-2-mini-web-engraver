@@ -13,12 +13,15 @@ export class WebSerialTransport implements Transport {
   private writer: WritableStreamDefaultWriter<Uint8Array> | null = null;
   private closing = false;
 
-  private constructor(private readonly port: SerialPort) {}
+  private constructor(
+    private readonly port: SerialPort,
+    readonly baudRate: number,
+  ) {}
 
   static async request(baudRate = DEFAULT_BAUD_RATE): Promise<WebSerialTransport> {
     const port = await navigator.serial.requestPort();
     await port.open({ baudRate, dataBits: 8, stopBits: 1, parity: 'none', flowControl: 'none' });
-    return new WebSerialTransport(port);
+    return new WebSerialTransport(port, baudRate);
   }
 
   open(onData: (chunk: Uint8Array) => void, onClose: (reason?: unknown) => void): void {

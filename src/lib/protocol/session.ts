@@ -7,6 +7,8 @@ export interface Transport {
   /** Registers the only consumer. `onClose` fires once if the link drops without `close()`. */
   open(onData: (chunk: Uint8Array) => void, onClose: (reason?: unknown) => void): void;
   close(): Promise<void>;
+  /** Line speed in baud, when the transport has one (used for upload time estimates). */
+  readonly baudRate?: number;
 }
 
 export type NejeErrorCode = 'NO_RESPONSE' | 'BUSY' | 'TIMEOUT' | 'ABORTED' | 'DISCONNECTED' | 'NOT_READY' | 'OUT_OF_BOUNDS';
@@ -25,11 +27,22 @@ export type JobProgress =
   | { readonly stage: 'none' }
   /** Phase 1: the device receives the whole bitmap before it starts burning. */
   | { readonly stage: 'uploading'; readonly sent: number; readonly total: number; readonly startedAt: number }
-  /** Phase 2: burning. `percent` is null until (unless) the device reports progress. */
-  | { readonly stage: 'burning'; readonly percent: number | null; readonly startedAt: number }
-  | { readonly stage: 'finished'; readonly durationMs: number }
-  | { readonly stage: 'cancelled' }
-  | { readonly stage: 'failed'; readonly code: NejeErrorCode };
+  /**
+   * Phase 2: burning. `percent` is null until (unless) the device reports progress.
+   * `jobStartedAt` is when the upload began, so the total duration can be reported.
+   */
+  | {
+      readonly stage: 'burning';
+      readonly percent: number | null;
+      readonly startedAt: number;
+      readonly jobStartedAt: number;
+      /** Burn time as counted by the device, when it reports it. */
+      readonly elapsedSeconds: number | null;
+    }
+  | { readonly stage: 'finished'; readonly durationMs: number; readonly finishedAt: number }
+  /** `reached` is the phase the job had got to, so the UI can keep showing it. */
+  | { readonly stage: 'cancelled'; readonly reached: 'none' | 'uploading' | 'burning' }
+  | { readonly stage: 'failed'; readonly code: NejeErrorCode; readonly reached: 'none' | 'uploading' | 'burning' };
 
 export interface SessionSnapshot {
   readonly link: 'connecting' | 'connected' | 'closed';
@@ -110,6 +123,10 @@ export class NejeSession {
   private upload: { readonly controller: AbortController; readonly done: Promise<void> } | null = null;
   private motion: AbortController | null = null;
   private streaming = false;
+  /** Rectangle of the job being burned, to turn job-relative positions into work-area ones. */
+  private jobRect: Rect | null = null;
+  /** Receive progress the device reported for the current upload, in percent. */
+  private deviceReceive: number | null = null;
   /** Corner of the frame being traced; the head is parked there when tracing stops. */
   private traceOrigin: Point | null = null;
   private readonly chunkSize: number;
@@ -174,22 +191,50 @@ export class NejeSession {
       case 'status':
         this.update({ machine: m.state });
         break;
+      case 'burnProgress': {
+        const job = this.snapshot.job;
+        const rect = this.jobRect;
+        // the position is relative to the job: with its rectangle the head is known while burning
+        const head = rect ? { x: rect.x + Math.min(m.x, rect.width - 1), y: rect.y + Math.min(m.y, rect.height - 1) } : this.snapshot.head;
+        if (job.stage === 'burning') this.update({ job: { ...job, percent: m.percent, elapsedSeconds: m.elapsedSeconds }, head });
+        else if (job.stage !== 'cancelled' && job.stage !== 'uploading') {
+          const startedAt = Date.now() - m.elapsedSeconds * 1000;
+          this.update({ job: { stage: 'burning', percent: m.percent, startedAt, jobStartedAt: startedAt, elapsedSeconds: m.elapsedSeconds }, machine: 'working', head });
+        }
+        break;
+      }
       case 'telemetry':
         this.update({ temperatureC: m.temperatureC, batteryPercent: m.batteryPercent });
         break;
       case 'progress':
-        // Only meaningful while burning: during the upload the device reports how much it has
-        // received, which is already tracked (and used to make the bar flicker between phases).
-        // Late reports after a stop must not revive the job either.
-        if (this.snapshot.job.stage === 'burning') this.update({ job: { ...this.snapshot.job, percent: m.percent }, machine: 'working' });
+      {
+        // During the upload the device reports how much it has received, which is tracked
+        // separately (letting it through made the bar flicker between phases). Late reports
+        // after a stop must not revive the job. Anything else is a burn in progress, also one
+        // started before this session connected (e.g. after a page reload).
+        const job = this.snapshot.job;
+        if (job.stage === 'cancelled') break;
+        if (job.stage === 'uploading') {
+          // receipt of the image, the only trustworthy upload progress (never goes backwards)
+          this.deviceReceive = Math.max(this.deviceReceive ?? 0, m.percent);
+          this.update({ job: { ...job, sent: Math.round((job.total * this.deviceReceive) / 100) } });
+          break;
+        }
+        const now = Date.now();
+        const burning =
+          job.stage === 'burning'
+            ? { ...job, percent: m.percent }
+            : ({ stage: 'burning', percent: m.percent, startedAt: now, jobStartedAt: now, elapsedSeconds: null } as const);
+        this.update({ job: burning, machine: 'working' });
+      }
         break;
       case 'event':
         if (m.event === 'finished') {
           // only a job that was actually running can finish; a cancel on an idle machine also says "finished"
-          const { stage } = this.snapshot.job;
           const job = this.snapshot.job;
-          const finished = { stage: 'finished', durationMs: 'startedAt' in job ? Date.now() - job.startedAt : 0 } as const;
-          this.update({ machine: 'idle', job: stage === 'uploading' || stage === 'burning' ? finished : job });
+          const startedAt = job.stage === 'burning' ? job.jobStartedAt : job.stage === 'uploading' ? job.startedAt : null;
+          const now = Date.now();
+          this.update({ machine: 'idle', job: startedAt === null ? job : { stage: 'finished', durationMs: now - startedAt, finishedAt: now } });
         }
         if (m.event === 'paused' || m.event === 'lowBattery') this.update({ machine: 'paused' });
         break;
@@ -270,6 +315,16 @@ export class NejeSession {
     if (!ok) throw new NejeError('OUT_OF_BOUNDS', `rect ${JSON.stringify(r)} is outside ${info.width}×${info.height}`);
   }
 
+  private reachedPhase(): 'none' | 'uploading' | 'burning' {
+    const { stage } = this.snapshot.job;
+    return stage === 'uploading' || stage === 'burning' ? stage : 'none';
+  }
+
+  /** True while a job, upload or motion routine runs; parameters and moves are refused then. */
+  isBusy(): boolean {
+    return this.busy;
+  }
+
   private get busy(): boolean {
     return this.upload !== null || this.motion !== null || this.snapshot.machine !== 'idle';
   }
@@ -290,8 +345,14 @@ export class NejeSession {
   }
 
   /** Changes laser parameters, keeping the ones not given at their current device values. */
+  /** Changes laser parameters while idle; a job carries its own (see `engrave`). */
   async setLaserParams(patch: LaserParamsPatch): Promise<void> {
     this.requireReady();
+    if (this.busy) throw new NejeError('BUSY', 'parameters can only change while idle');
+    await this.sendParams(patch);
+  }
+
+  private async sendParams(patch: LaserParamsPatch): Promise<void> {
     const params = { ...(this.snapshot.params ?? FALLBACK_PARAMS), ...patch };
     await this.send(commands.setLaserParams(params));
     this.update({ params });
@@ -381,9 +442,9 @@ export class NejeSession {
   }
 
   /**
-   * Sends parameters and uploads a job; the device burns as the data arrives. Resolves when the
-   * upload is done, the burn itself is tracked through the snapshot. `stop()` at any point
-   * before the job is announced prevents it from starting at all.
+   * Sends parameters and uploads a job. The device first receives the whole bitmap and only
+   * then burns, so this resolves when the upload is done and the burn is tracked through the
+   * snapshot. `stop()` at any point before the job is announced prevents it from starting.
    */
   async engrave(rect: Rect, bitmap: Bytes, params?: LaserParamsPatch): Promise<void> {
     this.assertInside(rect);
@@ -398,7 +459,7 @@ export class NejeSession {
       await done;
     } catch (error) {
       const code = error instanceof NejeError ? error.code : 'DISCONNECTED';
-      if (code !== 'ABORTED') this.update({ job: { stage: 'failed', code } });
+      if (code !== 'ABORTED') this.update({ job: { stage: 'failed', code, reached: this.reachedPhase() } });
       throw error;
     } finally {
       this.upload = null;
@@ -409,13 +470,14 @@ export class NejeSession {
     const abortIfStopped = () => {
       if (signal.aborted) throw new NejeError('ABORTED');
     };
-    if (params) await this.setLaserParams(params);
+    if (params) await this.sendParams(params);
     abortIfStopped();
     // no parking move here: the job is announced straight after, as the vendor app does
     if (this.snapshot.previewing) await this.previewOff({ park: false });
     abortIfStopped();
 
     const accepted = this.waitFor('jobAccepted', this.jobAcceptTimeoutMs);
+    this.jobRect = rect;
     this.update({ head: null });
     await this.send(commands.startJob(rect));
     let reply: MessageOf<'jobAccepted'>;
@@ -430,16 +492,39 @@ export class NejeSession {
     }
     if (!reply.accepted) throw new NejeError('BUSY');
     const startedAt = Date.now();
+    this.deviceReceive = null;
     if (!signal.aborted) this.update({ machine: 'working', job: { stage: 'uploading', sent: 0, total: bitmap.length, startedAt } });
     // Once accepted, the device consumes exactly `bitmap.length` bytes, so a stop cannot cut the
     // stream short: the rest is padded with zeros (no burn) and cancel follows in stop().
-    const complete = await this.writeData(bitmap, signal);
-    if (!complete) throw new NejeError('ABORTED');
-    if (this.snapshot.job.stage === 'uploading') this.update({ job: { stage: 'burning', percent: null, startedAt: Date.now() } });
+    //
+    // The host finishing its writes means little: the OS and the USB bridge buffer the data while
+    // the device still receives it at line speed. So "uploaded" is what the device confirms
+    // (receive progress reaching 100 %, or transfer complete), and until then no other command
+    // may go out, or it would land in the image data (seen on hardware: the job then hangs).
+    this.streaming = true;
+    try {
+      const confirmed = this.waitFor('progress', this.receiveTimeoutMs(bitmap.length), (m) => m.percent >= 100);
+      const transferred = this.waitFor('transferComplete', this.receiveTimeoutMs(bitmap.length));
+      const complete = await this.writeData(bitmap, signal);
+      // devices that never confirm still get to burn; the timeout only bounds the wait
+      await Promise.any([confirmed, transferred]).catch(() => undefined);
+      if (!complete) throw new NejeError('ABORTED');
+    } finally {
+      this.streaming = false;
+    }
+    const job = this.snapshot.job;
+    if (job.stage === 'uploading') this.update({ job: { stage: 'burning', percent: null, startedAt: Date.now(), jobStartedAt: job.startedAt, elapsedSeconds: null } });
+  }
+
+  /** How long the device may take to confirm receipt of `bytes` at line speed, with margin. */
+  private receiveTimeoutMs(bytes: number): number {
+    const baud = this.transport.baudRate ?? 57_600;
+    return ((bytes * 10) / baud) * 1000 * 2 + 3000;
   }
 
   /** Streams raw data in chunks; after an abort the remainder is zero-filled. Returns false if aborted. */
   private async writeData(data: Bytes, signal: AbortSignal, silent = false): Promise<boolean> {
+    const wasStreaming = this.streaming;
     this.streaming = true;
     let aborted = false;
     try {
@@ -448,12 +533,13 @@ export class NejeSession {
         const size = Math.min(this.chunkSize, data.length - sent);
         await this.transport.write(aborted ? new Uint8Array(size) : data.subarray(sent, sent + size));
         sent += size;
-        // re-check: stop() may have run while this chunk was being written
+        // host-side progress only for devices that do not report receipt themselves;
+        // re-check the stage: stop() may have run while this chunk was being written
         const job = this.snapshot.job;
-        if (!silent && !aborted && !signal.aborted && job.stage === 'uploading') this.update({ job: { ...job, sent } });
+        if (!silent && !aborted && !signal.aborted && job.stage === 'uploading' && this.deviceReceive === null) this.update({ job: { ...job, sent } });
       }
     } finally {
-      this.streaming = false;
+      this.streaming = wasStreaming;
     }
     return !aborted;
   }
@@ -467,7 +553,7 @@ export class NejeSession {
     this.motion?.abort();
     const { job, machine } = this.snapshot;
     const upload = this.upload;
-    if (upload || job.stage === 'uploading' || job.stage === 'burning' || machine !== 'idle') this.update({ job: { stage: 'cancelled' } });
+    if (upload || job.stage === 'uploading' || job.stage === 'burning' || machine !== 'idle') this.update({ job: { stage: 'cancelled', reached: this.reachedPhase() } });
     upload?.controller.abort();
     await upload?.done.catch(() => undefined);
     this.update({ previewing: false });

@@ -120,8 +120,6 @@ export const it: Messages = {
   durationSeconds: '{n} s',
   durationMinutes: '{n} min',
   durationHours: '{h} h {m} min',
-  progressLabel: 'Avanzamento del lavoro',
-  progressNone: 'Nessun lavoro in corso',
   progressUploading: 'Invio dati {percent} %',
   progressBurning: 'Incisione {percent} %',
   progressFinished: 'Completato',
@@ -134,7 +132,8 @@ export const it: Messages = {
   phaseDone: 'Fatto',
   elapsedRemaining: '{elapsed} trascorso, mancano circa {remaining}',
   elapsed: '{elapsed} trascorso',
-  finishedIn: 'Completato in {time}',
+  finishesAround: 'fine prevista verso le {time}',
+  finishedAt: 'Completato alle {time}, durata {duration}',
   uploadFirst: 'L’immagine viene prima inviata all’incisore (circa {time}), poi inizia l’incisione.',
   safetyNote:
     'La luce laser danneggia gli occhi e può causare incendi. Indossi occhiali di protezione laser, non lasci mai la macchina incustodita e sappia dove si trova il suo interruttore di alimentazione.',

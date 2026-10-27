@@ -285,6 +285,8 @@ interface EngravePanelProps {
   /** Changes once per job stage; announced to screen readers. */
   readonly stageText: string;
   readonly previewing: boolean;
+  /** Tracing can be switched off (connected, nothing streaming or moving). */
+  readonly canStopTrace: boolean;
   readonly estimate: string | null;
   /** The two-phase progress display. */
   readonly progress: ReactNode;
@@ -302,7 +304,7 @@ export function EngravePanel(p: EngravePanelProps) {
     <Panel title={t('engraveHeading')}>
       <p className="notice">{t('safetyNote')}</p>
       <div className="row">
-        <button type="button" aria-pressed={p.previewing} onClick={p.onTrace} disabled={!ready && !p.previewing} aria-describedby={traceHint}>
+        <button type="button" aria-pressed={p.previewing} onClick={p.onTrace} disabled={p.previewing ? !p.canStopTrace : !ready} aria-describedby={traceHint}>
           {p.previewing ? t('traceStop') : t('traceFrame')}
         </button>
         <button type="button" className="stop-button" onClick={p.onStop} disabled={!p.connected} aria-keyshortcuts="Escape">

@@ -126,12 +126,13 @@ test.describe('engraving with the simulator', () => {
     await start.click();
     await expect(uploadBar(page)).toHaveAttribute('aria-valuetext', 'Done'); // phase 1 complete…
     await expect(progress(page)).toHaveAttribute('aria-valuetext', /^Engraving \d+ %$/); // …phase 2 running
+    await expect(outcome(page)).toContainText(/expected to finish around/);
     await expect(page.getByRole('status', { name: 'Engraver status' })).toHaveText('Engraving');
     await expect(page.getByRole('button', { name: 'Stop', exact: true })).toBeFocused();
     await expect(page.getByRole('button', { name: 'Disconnect' })).toBeDisabled();
     await expect(page.getByLabel('Power')).toBeDisabled();
     await expect(progress(page)).toHaveAttribute('aria-valuetext', 'Done', { timeout: 15_000 });
-    await expect(outcome(page)).toContainText(/Done in \d+:\d\d/);
+    await expect(outcome(page)).toContainText(/Finished at .+, took \d+:\d\d/);
     await expect(page.getByRole('button', { name: 'Open photo.png with its settings' })).toBeVisible();
   });
 

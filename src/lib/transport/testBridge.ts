@@ -22,6 +22,9 @@ declare global {
 export const getTestBridge = (): NejeTestBridge | undefined => (typeof window === 'undefined' ? undefined : window.__NEJE_TEST_BRIDGE__);
 
 export class BridgeTransport implements Transport {
+  /** The Node side opens the real port at the default speed. */
+  readonly baudRate = 57_600;
+
   constructor(private readonly bridge: NejeTestBridge) {}
 
   open(onData: (chunk: Uint8Array) => void, onClose: () => void): void {

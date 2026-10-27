@@ -69,6 +69,12 @@ describe('decodeMessage', () => {
     expect(decodeMessage(fromHex('ff aa 0b 0d 01 50 00 10 00 20 55'))).toEqual({ type: 'position', y: 16, x: 32 });
   });
 
+  it('decodes burn progress as captured during a real burn', () => {
+    expect(decodeMessage(fromHex('ff aa 0e 0d 02 25 36 00 0c 00 42 00 25 55'))).toEqual({ type: 'burnProgress', percent: 54, elapsedSeconds: 12, x: 66, y: 37 });
+    expect(decodeMessage(fromHex('ff aa 0e 0d 02 25 64 00 14 00 47 00 42 55'))).toMatchObject({ percent: 100, elapsedSeconds: 20, y: 66 });
+    expect(decodeMessage(fromHex('ff aa 08 04 01 04 01 55'))).toEqual({ type: 'transferComplete' });
+  });
+
   it('reports unknown commands instead of guessing', () => {
     expect(decodeMessage(fromHex('ff aa 0f 00 01 0c 01 f6 54 c6 2a 08 82 9e 55'))).toEqual({ type: 'unknown', cmd: 0 });
   });

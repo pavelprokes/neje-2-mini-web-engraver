@@ -67,6 +67,11 @@ export type DeviceMessage =
     }
   | { readonly type: 'event'; readonly event: 'finished' | 'lowBattery' | 'paused' | 'other'; readonly code: number }
   | { readonly type: 'position'; readonly x: number; readonly y: number }
+  /**
+   * Sent about once a second while burning (verified on a Master 2 Mini, fw 7): percent done,
+   * seconds since the burn began, and the head position relative to the job's top-left corner.
+   */
+  | { readonly type: 'burnProgress'; readonly percent: number; readonly elapsedSeconds: number; readonly x: number; readonly y: number }
   | { readonly type: 'unknown'; readonly cmd: number };
 
 export type MessageOf<T extends DeviceMessage['type']> = Extract<DeviceMessage, { type: T }>;
@@ -176,6 +181,9 @@ export function decodeMessage(f: Uint8Array): DeviceMessage {
       return { type: 'event', event: EVENTS[code as keyof typeof EVENTS] ?? 'other', code };
     }
     case 0x0d:
+      // `0d 02 '%' pp 00 ss 00 xx 00 yy`: percent, seconds and job-relative position (BE16 pairs)
+      if (at(f, 4) === 0x02 && at(f, 5) === 0x25)
+        return { type: 'burnProgress', percent: Math.min(100, at(f, 6)), elapsedSeconds: be16(f, 7), x: be16(f, 9), y: be16(f, 11) };
       if (at(f, 5) === 0x50) return { type: 'position', y: be16(f, 6), x: be16(f, 8) };
       break;
   }
