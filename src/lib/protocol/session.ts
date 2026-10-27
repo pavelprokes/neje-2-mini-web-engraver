@@ -108,6 +108,8 @@ export class NejeSession {
   private upload: { readonly controller: AbortController; readonly done: Promise<void> } | null = null;
   private motion: AbortController | null = null;
   private streaming = false;
+  /** Corner of the frame being traced; the head is parked there when tracing stops. */
+  private traceOrigin: Point | null = null;
   private readonly chunkSize: number;
   private readonly identifyTimeoutMs: number;
   private readonly identifyAttempts: number;
@@ -169,6 +171,10 @@ export class NejeSession {
         break;
       case 'status':
         this.update({ machine: m.state });
+        break;
+      case 'position':
+        // reported by the device while it burns
+        this.update({ head: { x: m.x, y: m.y } });
         break;
       case 'telemetry':
         this.update({ temperatureC: m.temperatureC, batteryPercent: m.batteryPercent });
@@ -292,6 +298,7 @@ export class NejeSession {
     this.assertInside(rect);
     if (this.upload || this.snapshot.machine !== 'idle') throw new NejeError('BUSY');
     await this.send(commands.previewOn(rect));
+    this.traceOrigin = { x: rect.x, y: rect.y };
     this.update({ previewing: true, head: null });
   }
 
@@ -300,6 +307,10 @@ export class NejeSession {
     // flip first, so a preview refresh racing with this call sees the preview as off
     this.update({ previewing: false });
     await this.send(commands.previewOff());
+    // tracing leaves the head somewhere on the frame; park it at the corner so it is known again
+    const origin = this.traceOrigin;
+    this.traceOrigin = null;
+    if (origin) await this.moveTo(origin.x, origin.y);
   }
 
   async moveTo(x: number, y: number): Promise<void> {

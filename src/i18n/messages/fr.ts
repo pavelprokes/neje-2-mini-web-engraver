@@ -75,6 +75,8 @@ export const fr: Messages = {
   goHomeHint: 'Ramène la tête à l’origine, c’est-à-dire là où elle se trouvait à la mise sous tension du graveur (ce modèle n’a pas de fins de course). Le laser reste éteint.',
   headPosition: 'Tête à X {x} mm, Y {y} mm',
   headUnknown: 'Position de la tête inconnue. Utilisez « Retour à l’origine » pour la définir.',
+  clickToMove: 'Déplacer la tête par clic',
+  clickToMoveHint: 'Cliquez dans la zone de travail pour y envoyer la tête\xa0; les flèches la déplacent de 1 mm, avec Maj de 10 mm. Le laser reste éteint.',
   workAreaLabel: 'Aperçu de la zone de travail',
   workAreaDescription:
     'Zone de travail {width} × {height} mm. Image à X {x} mm, Y {y} mm, taille {w} × {h} mm. Les flèches la déplacent de 1 mm, avec Maj de 10 mm.',

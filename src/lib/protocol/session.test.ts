@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { CAPTURED, SimulatorTransport, type SimulatorOptions } from '@/lib/transport/simulator';
 import { packBitmap } from './bitmap';
-import { decodeMessage, FrameParser } from './messages';
+import { decodeMessage, FrameParser, fromHex } from './messages';
 import { NejeError, NejeSession, type SessionSnapshot } from './session';
 
 const sessions: NejeSession[] = [];
@@ -199,8 +199,8 @@ describe('NejeSession', () => {
     expect(await interrupted).toBe(false);
   });
 
-  it('tracks the head position from homing and moves until a job takes over', async () => {
-    const { session } = setup();
+  it('tracks the head position from homing, moves, tracing and device reports', async () => {
+    const { sim, session } = setup();
     await session.connect();
     expect(session.getSnapshot().head).toBeNull();
     await session.home();
@@ -209,12 +209,18 @@ describe('NejeSession', () => {
     expect(session.getSnapshot().head).toEqual({ x: 120, y: 40 });
     await session.traceSquare(10, { x: 0, y: 0 }, 1);
     expect(session.getSnapshot().head).toEqual({ x: 0, y: 0 });
-    await session.previewOn({ x: 0, y: 0, width: 8, height: 8 });
-    expect(session.getSnapshot().head).toBeNull();
+    await session.previewOn({ x: 16, y: 24, width: 8, height: 8 });
+    expect(session.getSnapshot().head).toBeNull(); // the device moves it along the frame
+    await session.previewOff();
+    expect(session.getSnapshot().head).toEqual({ x: 16, y: 24 }); // parked at the frame corner
     await session.stop();
     await session.home();
     await session.engrave({ x: 0, y: 0, width: 8, height: 1 }, new Uint8Array(1));
     expect(session.getSnapshot().head).toBeNull();
+    // position reports during a burn keep it known
+    sim.emit(fromHex('ff aa 0b 0d 01 50 00 10 00 20 55'));
+    await new Promise((r) => setTimeout(r, 0));
+    expect(session.getSnapshot().head).toEqual({ x: 32, y: 16 });
   });
 
   it('flags a device that stops sending its heartbeat, and recovers', async () => {

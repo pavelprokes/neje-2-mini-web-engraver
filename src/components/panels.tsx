@@ -175,11 +175,9 @@ interface PositionPanelProps {
   readonly motionTesting: boolean;
   readonly onTestMotion: () => void;
   readonly onGoHome: () => void;
-  /** Last known head position, or why it is unknown; `null` when not connected. */
-  readonly headText: string | null;
 }
 
-export function PositionPanel({ xMm, yMm, patch, onCenter, canMoveHead, onMoveHead, canTestMotion, motionTesting, onTestMotion, onGoHome, headText }: PositionPanelProps) {
+export function PositionPanel({ xMm, yMm, patch, onCenter, canMoveHead, onMoveHead, canTestMotion, motionTesting, onTestMotion, onGoHome }: PositionPanelProps) {
   const { t } = useI18n();
   const hintId = useId();
   const motionHintId = useId();
@@ -202,11 +200,6 @@ export function PositionPanel({ xMm, yMm, patch, onCenter, canMoveHead, onMoveHe
       <p id={hintId} className="hint">
         {t('moveHeadHint')}
       </p>
-      {headText && (
-        <p className="hint" aria-live="polite">
-          <strong>{headText}</strong>
-        </p>
-      )}
       <div className="row">
         <button type="button" onClick={onGoHome} disabled={!canTestMotion} aria-describedby={homeHintId}>
           {t('goHome')}

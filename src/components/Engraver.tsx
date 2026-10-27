@@ -333,7 +333,6 @@ export function Engraver() {
             motionTesting={motionTesting}
             onTestMotion={() => void run(testMotion)}
             onGoHome={() => void run((s) => s.home())}
-            headText={headText}
           />
           <LaserPanel
             power={settings.power}
@@ -390,6 +389,10 @@ export function Engraver() {
             highlight={!!snapshot?.previewing}
             trace={traceRect}
             head={connected ? (snapshot?.head ?? null) : null}
+            canMoveHead={connected && !jobActive && !motionTesting && !snapshot?.previewing}
+            onHeadTo={(x, y) => void run((s) => s.moveTo(x, y))}
+            headText={headText}
+            onGoHome={() => void run((s) => s.home())}
             onMove={(x, y) => patch({ xMm: Math.max(0, pxToMm(x, area)), yMm: Math.max(0, pxToMm(y, area)) })}
             onNudge={(dx, dy) => {
               if (!raster) return;

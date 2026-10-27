@@ -75,6 +75,8 @@ export const es: Messages = {
   goHomeHint: 'Lleva el cabezal al origen, es decir, donde estaba al encender el grabador (este modelo no tiene finales de carrera). El láser permanece apagado.',
   headPosition: 'Cabezal en X {x} mm, Y {y} mm',
   headUnknown: 'Posición del cabezal desconocida. Use «Ir al origen» para fijarla.',
+  clickToMove: 'Mover el cabezal con un clic',
+  clickToMoveHint: 'Haga clic en el área de trabajo para enviar el cabezal allí; las flechas lo mueven 1 mm, con Mayús 10 mm. El láser permanece apagado.',
   workAreaLabel: 'Vista previa del área de trabajo',
   workAreaDescription:
     'Área de trabajo {width} × {height} mm. Imagen en X {x} mm, Y {y} mm, tamaño {w} × {h} mm. Las flechas la mueven 1 mm; con Mayús, 10 mm.',

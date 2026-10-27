@@ -52,6 +52,11 @@ export class SimulatorTransport implements Transport {
     for (const frame of this.parser.push(data)) this.handle(frame);
   }
 
+  /** Injects a device frame, e.g. to simulate a message the simulator does not produce itself. */
+  emit(frame: Uint8Array): void {
+    this.reply(frame);
+  }
+
   /** Simulates the cable being pulled. */
   unplug(): void {
     this.dispose();

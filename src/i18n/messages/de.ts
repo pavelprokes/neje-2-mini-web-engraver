@@ -75,6 +75,8 @@ export const de: Messages = {
   goHomeHint: 'Fährt den Kopf zum Ursprung, also dorthin, wo er beim Einschalten des Graviergeräts war (dieses Modell hat keine Endschalter). Der Laser bleibt aus.',
   headPosition: 'Kopf bei X {x} mm, Y {y} mm',
   headUnknown: 'Kopfposition unbekannt. Mit „Zur Ausgangsposition“ festlegen.',
+  clickToMove: 'Kopf per Klick bewegen',
+  clickToMoveHint: 'Klicken Sie in den Arbeitsbereich, um den Kopf dorthin zu fahren; Pfeiltasten bewegen ihn um 1 mm, mit Umschalt um 10 mm. Der Laser bleibt aus.',
   workAreaLabel: 'Vorschau der Arbeitsfläche',
   workAreaDescription:
     'Arbeitsfläche {width} × {height} mm. Bild bei X {x} mm, Y {y} mm, Größe {w} × {h} mm. Pfeiltasten verschieben um 1 mm, mit Umschalt um 10 mm.',

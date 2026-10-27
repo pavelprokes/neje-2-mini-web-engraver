@@ -75,6 +75,8 @@ export const it: Messages = {
   goHomeHint: 'Porta la testa all’origine, cioè dove si trovava all’accensione dell’incisore (questo modello non ha finecorsa). Il laser resta spento.',
   headPosition: 'Testa a X {x} mm, Y {y} mm',
   headUnknown: 'Posizione della testa sconosciuta. Usi «Vai all’origine» per impostarla.',
+  clickToMove: 'Sposta la testa con un clic',
+  clickToMoveHint: 'Faccia clic nell’area di lavoro per portarvi la testa; le frecce la spostano di 1 mm, con Maiusc di 10 mm. Il laser resta spento.',
   workAreaLabel: 'Anteprima dell’area di lavoro',
   workAreaDescription:
     'Area di lavoro {width} × {height} mm. Immagine a X {x} mm, Y {y} mm, dimensioni {w} × {h} mm. I tasti freccia la spostano di 1 mm, con Maiusc di 10 mm.',

@@ -74,6 +74,8 @@ export const en = {
   goHomeHint: 'Moves the head to the origin: where it was when the engraver was switched on, as this model has no limit switches. The laser stays off.',
   headPosition: 'Head at X {x} mm, Y {y} mm',
   headUnknown: 'Head position unknown. Use “Go home” to set it.',
+  clickToMove: 'Move head by clicking',
+  clickToMoveHint: 'Click the work area to send the head there; arrow keys move it by 1 mm, with Shift by 10 mm. The laser stays off.',
   workAreaLabel: 'Work area preview',
   workAreaDescription:
     'Work area {width} × {height} mm. Image at X {x} mm, Y {y} mm, size {w} × {h} mm. Arrow keys move it by 1 mm, with Shift by 10 mm.',
