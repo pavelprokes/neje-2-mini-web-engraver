@@ -6,7 +6,7 @@ import { useI18n } from '@/i18n/I18nProvider';
 import { errorKeyFor, errorNotice, useDevice, type Notice } from '@/hooks/useDevice';
 import { addHistory, listHistory, removeHistory, type HistoryEntry } from '@/lib/history';
 import { decodeImage, ImageDecodeError, type ImageAsset } from '@/lib/imaging/decode';
-import { renderRaster, type Raster } from '@/lib/imaging/raster';
+import { fitPadded, renderRaster, type Raster } from '@/lib/imaging/raster';
 import { DEFAULT_JOB_SETTINGS, DEFAULT_WORK_AREA, estimateSeconds, LIMITS, mmToPx, pxToMm, type JobSettings, type WorkArea as Area } from '@/lib/job';
 import { BUILT_IN_PRESETS, userPresetStore } from '@/lib/presets';
 import { motionTestOnConnect } from '@/lib/storage';
@@ -143,7 +143,9 @@ export function Engraver() {
   useDebouncedEffect(connected && !jobActive && !motionTesting ? `${settings.power}/${settings.burnTimeMs}` : null, 300, (key) => {
     if (key) void run((s) => s.setLaserParams({ power: settings.power, burnTimeMs: settings.burnTimeMs }));
   });
-  useDebouncedEffect(snapshot?.previewing && raster ? raster.rect : null, 300, (rect) => {
+  // trace only what will burn; fall back to the full image box for blank images
+  const traceRect = useMemo(() => (raster ? fitPadded(raster.burnBounds ?? raster.rect, area) : null), [raster, area]);
+  useDebouncedEffect(snapshot?.previewing ? traceRect : null, 300, (rect) => {
     // re-check at fire time: the preview may have been switched off (or stopped) meanwhile
     if (rect) void run((s) => (s.getSnapshot().previewing ? s.previewOn(rect) : Promise.resolve()));
   });
@@ -358,7 +360,7 @@ export function Engraver() {
             progress={job.stage === 'none' ? null : progress.value}
             progressText={progress.text}
             estimate={estimate}
-            onTrace={() => raster && void run((s) => (s.getSnapshot().previewing ? s.previewOff() : s.previewOn(raster.rect)))}
+            onTrace={() => traceRect && void run((s) => (s.getSnapshot().previewing ? s.previewOff() : s.previewOn(traceRect)))}
             onPauseResume={() => void run((s) => (s.getSnapshot().machine === 'paused' ? s.resume() : s.pause()))}
             onStart={() => setConfirming(true)}
           />
@@ -386,6 +388,7 @@ export function Engraver() {
             area={area}
             raster={raster}
             highlight={!!snapshot?.previewing}
+            trace={traceRect}
             head={connected ? (snapshot?.head ?? null) : null}
             onMove={(x, y) => patch({ xMm: Math.max(0, pxToMm(x, area)), yMm: Math.max(0, pxToMm(y, area)) })}
             onNudge={(dx, dy) => {

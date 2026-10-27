@@ -169,6 +169,30 @@ test.describe('engraving with the simulator', () => {
     await expect(page.getByLabel('X from left (mm)')).toHaveValue(x);
   });
 
+  test('trace frame outlines only what will burn, margins trimmed', async ({ page }) => {
+    await connectSimulator(page);
+    await loadImage(page, 'logo.svg'); // shapes leave a 5 % blank margin on every side
+    await page.getByText('Advanced').click();
+    await page.getByLabel('Show serial traffic').check();
+    const trace = page.getByRole('button', { name: 'Trace frame' });
+    await trace.click();
+    await expect(page.getByRole('button', { name: 'Stop tracing' })).toHaveAttribute('aria-pressed', 'true');
+
+    const log = await page.getByRole('region', { name: 'Serial traffic in hexadecimal' }).textContent();
+    const frame = log!.split('\n').find((l) => l.startsWith('→ ff aa 10 05 01 50 02'))!;
+    const b = frame.slice(2).split(' ').map((h) => Number.parseInt(h, 16));
+    const [x, y, w, h] = [7, 9, 11, 13].map((i) => (b[i]! << 8) | b[i + 1]!);
+    const image = { w: Math.round(40 / 0.075), h: Math.round(20 / 0.075) }; // 40 × 20 mm at 75 µm
+    expect(x).toBeGreaterThan(0);
+    expect(y).toBeGreaterThan(0);
+    expect(w).toBeLessThan(image.w);
+    expect(h).toBeLessThan(image.h);
+    expect(w).toBeGreaterThan(image.w * 0.85);
+
+    await page.getByRole('button', { name: 'Stop tracing' }).click();
+    await expect(trace).toHaveAttribute('aria-pressed', 'false');
+  });
+
   test('user presets are saved and applied', async ({ page }) => {
     await page.getByLabel('Power').fill('42');
     await page.getByLabel('New preset name').fill('Walnut 3 mm');

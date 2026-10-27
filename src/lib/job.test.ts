@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { toDots } from './imaging/dither';
+import { dotBounds, fitPadded } from './imaging/raster';
 import { paddedWidth } from './protocol';
 import { DEFAULT_JOB_SETTINGS, DEFAULT_WORK_AREA, estimateSeconds, layoutJob, mmToPx, parseJobSettings, pxToMm } from './job';
 
@@ -76,4 +77,19 @@ describe('toDots', () => {
 
 describe('estimateSeconds', () => {
   it('counts dwell time only', () => expect(estimateSeconds(1000, 10)).toBe(10));
+});
+
+describe('trace bounds', () => {
+  it('trims blank margins and offsets to the job position', () => {
+    // 6×4 matrix, dots at (2,1) and (4,2)
+    const dots = new Uint8Array(24);
+    dots[1 * 6 + 2] = dots[2 * 6 + 4] = 1;
+    expect(dotBounds(dots, 6, { x: 100, y: 50 })).toEqual({ x: 102, y: 51, width: 3, height: 2 });
+    expect(dotBounds(new Uint8Array(24), 6)).toBeNull();
+  });
+
+  it('shifts a padded box back inside the work area', () => {
+    expect(fitPadded({ x: 1460, y: 0, width: 3, height: 1 }, area)).toEqual({ x: 1458, y: 0, width: 3, height: 1 }); // 1458 + 8 = 1466
+    expect(fitPadded({ x: 10, y: 0, width: 3, height: 1 }, area)).toEqual({ x: 10, y: 0, width: 3, height: 1 });
+  });
 });

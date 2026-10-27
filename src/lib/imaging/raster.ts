@@ -1,5 +1,5 @@
 import { layoutJob, type JobSettings, type WorkArea } from '@/lib/job';
-import type { Rect } from '@/lib/protocol';
+import { paddedWidth, type Rect } from '@/lib/protocol';
 import type { ImageAsset } from './decode';
 import { toDots } from './dither';
 
@@ -9,6 +9,41 @@ export interface Raster {
   /** One byte per device pixel, 1 = burn. */
   readonly dots: Uint8Array;
   readonly burnedDots: number;
+  /**
+   * Tight box around the dots that will actually burn (blank margins trimmed), in device pixels.
+   * `null` when nothing burns. This is what "trace frame" outlines.
+   */
+  readonly burnBounds: Rect | null;
+}
+
+/** Bounding box of the non-zero dots of a `width`-wide matrix, offset by `origin`. */
+export function dotBounds(dots: Uint8Array, width: number, origin: { x: number; y: number } = { x: 0, y: 0 }): Rect | null {
+  const height = dots.length / width;
+  let minX = width;
+  let minY = height;
+  let maxX = -1;
+  let maxY = -1;
+  for (let y = 0; y < height; y++) {
+    const row = y * width;
+    for (let x = 0; x < width; x++) {
+      if (!dots[row + x]) continue;
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      maxY = y;
+    }
+  }
+  if (maxX < 0) return null;
+  return { x: origin.x + minX, y: origin.y + minY, width: maxX - minX + 1, height: maxY - minY + 1 };
+}
+
+/**
+ * The device traces and burns byte-padded widths, so a narrow box near the right edge must
+ * shift left to stay inside the work area.
+ */
+export function fitPadded(rect: Rect, area: { width: number }): Rect {
+  const overflow = rect.x + paddedWidth(rect.width) - area.width;
+  return overflow > 0 ? { ...rect, x: Math.max(0, rect.x - overflow) } : rect;
 }
 
 /** Renders the motif at device resolution with rotation, mirroring and tone settings applied. */
@@ -30,5 +65,5 @@ export function renderRaster(asset: ImageAsset, settings: JobSettings, area: Wor
   const dots = toDots(ctx.getImageData(0, 0, width, height), settings);
   let burnedDots = 0;
   for (const d of dots) burnedDots += d;
-  return { rect, dots, burnedDots };
+  return { rect, dots, burnedDots, burnBounds: dotBounds(dots, width, rect) };
 }
