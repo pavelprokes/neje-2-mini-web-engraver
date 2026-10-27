@@ -18,6 +18,13 @@ interface Props {
   readonly onMove: (x: number, y: number) => void;
   /** Relative keyboard move in millimetres, applied to the latest state by the caller. */
   readonly onNudge: (dxMm: number, dyMm: number) => void;
+  /** Click-to-move mode is available (connected, idle). */
+  readonly canMoveHead: boolean;
+  /** Sends the head to a device pixel position (laser off). */
+  readonly onHeadTo: (x: number, y: number) => void;
+  /** Head readout shown under the work area while connected; `null` when not connected. */
+  readonly headText: string | null;
+  readonly onGoHome: () => void;
 }
 
 const MAX_CANVAS_HEIGHT = 900;
@@ -36,11 +43,14 @@ function useDotImage(raster: Raster | null) {
   }, [raster]);
 }
 
-export function WorkArea({ area, raster, highlight, trace, head, onMove, onNudge }: Props) {
+export function WorkArea({ area, raster, highlight, trace, head, onMove, onNudge, canMoveHead, onHeadTo, headText, onGoHome }: Props) {
   const { t, formatNumber } = useI18n();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drag = useRef<{ startX: number; startY: number; x: number; y: number } | null>(null);
   const descriptionId = useId();
+  const headHintId = useId();
+  const [headModeOn, setHeadMode] = useState(false);
+  const headMode = headModeOn && canMoveHead;
   const [keyboardMoved, setKeyboardMoved] = useState(0);
   const [announcement, setAnnouncement] = useState('');
   const dots = useDotImage(raster);
@@ -113,6 +123,13 @@ export function WorkArea({ area, raster, highlight, trace, head, onMove, onNudge
   };
 
   const onPointerDown = (e: PointerEvent<HTMLCanvasElement>) => {
+    if (headMode) {
+      const box = e.currentTarget.getBoundingClientRect();
+      const x = Math.round(((e.clientX - box.left) * area.width) / box.width);
+      const y = Math.round(((e.clientY - box.top) * area.height) / box.height);
+      onHeadTo(Math.min(area.width - 1, Math.max(0, x)), Math.min(area.height - 1, Math.max(0, y)));
+      return;
+    }
     if (!raster) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     drag.current = { startX: e.clientX, startY: e.clientY, x: raster.rect.x, y: raster.rect.y };
@@ -125,10 +142,19 @@ export function WorkArea({ area, raster, highlight, trace, head, onMove, onNudge
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (!raster) return;
     const step = e.shiftKey ? 10 : 1;
     const delta = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[e.key];
     if (!delta) return;
+    // keyboard alternative to clicking: arrows drive the head in click-to-move mode
+    if (headMode) {
+      if (!head) return;
+      e.preventDefault();
+      const px = mmToPx(step, area);
+      const clampTo = (v: number, max: number) => Math.min(max - 1, Math.max(0, v));
+      onHeadTo(clampTo(head.x + Math.sign(delta[0]!) * px, area.width), clampTo(head.y + Math.sign(delta[1]!) * px, area.height));
+      return;
+    }
+    if (!raster) return;
     e.preventDefault();
     onNudge(delta[0]!, delta[1]!);
     setKeyboardMoved((n) => n + 1);
@@ -154,10 +180,25 @@ export function WorkArea({ area, raster, highlight, trace, head, onMove, onNudge
 
   return (
     <figure className="work-area" style={{ margin: 0 }}>
-      <div role="group" tabIndex={0} aria-label={t('workAreaLabel')} aria-describedby={descriptionId} onKeyDown={onKeyDown}>
+      <div className="row" style={{ marginTop: 0, marginBottom: '0.5rem', alignItems: 'center' }}>
+        <button type="button" aria-pressed={headMode} disabled={!canMoveHead} aria-describedby={headHintId} onClick={() => setHeadMode((on) => !on)}>
+          {t('clickToMove')}
+        </button>
+        <span id={headHintId} className="hint" style={{ margin: 0 }}>
+          {t('clickToMoveHint')}
+        </span>
+      </div>
+      <div
+        role="group"
+        tabIndex={0}
+        aria-label={t('workAreaLabel')}
+        aria-describedby={headMode ? headHintId : descriptionId}
+        onKeyDown={onKeyDown}
+      >
         <canvas
           ref={canvasRef}
           aria-hidden="true"
+          data-mode={headMode ? 'head' : 'image'}
           style={{ aspectRatio: `${area.width} / ${area.height}` }}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
@@ -165,6 +206,17 @@ export function WorkArea({ area, raster, highlight, trace, head, onMove, onNudge
           onPointerCancel={() => (drag.current = null)}
         />
       </div>
+      {headText && (
+        <div className="head-readout">
+          <span aria-hidden="true" className="head-dot" />
+          <strong aria-live="polite">{headText}</strong>
+          {!head && (
+            <button type="button" onClick={onGoHome} disabled={!canMoveHead}>
+              {t('goHome')}
+            </button>
+          )}
+        </div>
+      )}
       <figcaption>
         <span>{t('workAreaCaption', size)}</span>
         <span id={descriptionId} className="visually-hidden">

@@ -193,6 +193,24 @@ test.describe('engraving with the simulator', () => {
     await expect(trace).toHaveAttribute('aria-pressed', 'false');
   });
 
+  test('click to move the head, with a keyboard alternative', async ({ page }) => {
+    const toggle = page.getByRole('button', { name: 'Move head by clicking' });
+    await expect(toggle).toBeDisabled(); // needs a connection
+    await connectSimulator(page);
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    const canvas = page.locator('.work-area canvas');
+    const box = (await canvas.boundingBox())!;
+    await canvas.click({ position: { x: box.width / 2, y: box.height / 4 } }); // 55 mm, 30 mm
+    await expect(page.getByText('Head at X 55 mm, Y 30 mm')).toBeVisible();
+    await page.getByRole('group', { name: 'Work area preview' }).focus();
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('Shift+ArrowDown');
+    await expect(page.getByText('Head at X 56 mm, Y 40 mm')).toBeVisible();
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+  });
+
   test('user presets are saved and applied', async ({ page }) => {
     await page.getByLabel('Power').fill('42');
     await page.getByLabel('New preset name').fill('Walnut 3 mm');
@@ -222,7 +240,7 @@ test.describe('engraving with the simulator', () => {
   test('head position is unknown until homed, then follows moves', async ({ page }) => {
     await connectSimulator(page);
     await expect(page.getByText('Head position unknown. Use “Go home” to set it.')).toBeVisible();
-    await page.getByRole('button', { name: 'Go home' }).click();
+    await page.getByRole('button', { name: 'Go home' }).first().click();
     await expect(page.getByText('Head at X 0 mm, Y 0 mm')).toBeVisible();
     await loadImage(page);
     await page.getByLabel('X from left (mm)').fill('20');

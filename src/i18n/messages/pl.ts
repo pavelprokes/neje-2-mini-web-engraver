@@ -75,6 +75,8 @@ export const pl: Messages = {
   goHomeHint: 'Przesuwa głowicę do punktu zerowego, czyli tam, gdzie była po włączeniu grawerki (ten model nie ma krańcówek). Laser pozostaje wyłączony.',
   headPosition: 'Głowica na X {x} mm, Y {y} mm',
   headUnknown: 'Pozycja głowicy nieznana. Ustaw ją przyciskiem „Do pozycji bazowej”.',
+  clickToMove: 'Przesuwanie głowicy kliknięciem',
+  clickToMoveHint: 'Kliknij obszar roboczy, aby wysłać tam głowicę; strzałki przesuwają ją o 1 mm, z Shift o 10 mm. Laser pozostaje wyłączony.',
   workAreaLabel: 'Podgląd obszaru roboczego',
   workAreaDescription:
     'Obszar roboczy {width} × {height} mm. Obraz na X {x} mm, Y {y} mm, rozmiar {w} × {h} mm. Strzałki przesuwają o 1 mm, z klawiszem Shift o 10 mm.',

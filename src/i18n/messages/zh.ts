@@ -75,6 +75,8 @@ export const zh: Messages = {
   goHomeHint: '将激光头移到原点，即雕刻机开机时激光头所在的位置（此型号没有限位开关）。激光保持关闭。',
   headPosition: '激光头位于 X {x} mm，Y {y} mm',
   headUnknown: '激光头位置未知。请使用“回原点”进行设置。',
+  clickToMove: '点击移动激光头',
+  clickToMoveHint: '点击工作区域即可将激光头移到该处；方向键每次移动 1 mm，按住 Shift 移动 10 mm。激光保持关闭。',
   workAreaLabel: '工作区域预览',
   workAreaDescription:
     '工作区域 {width} × {height} mm。图像位于 X {x} mm、Y {y} mm，尺寸 {w} × {h} mm。方向键每次移动 1 mm，按住 Shift 每次移动 10 mm。',

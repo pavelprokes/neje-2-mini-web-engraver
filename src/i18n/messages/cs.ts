@@ -75,6 +75,8 @@ export const cs: Messages = {
   goHomeHint: 'Přesune hlavu do počátku, tedy tam, kde byla při zapnutí gravírky (tento model nemá koncové spínače). Laser zůstane vypnutý.',
   headPosition: 'Hlava na X {x} mm, Y {y} mm',
   headUnknown: 'Pozice hlavy není známá. Nastavte ji tlačítkem „Domů“.',
+  clickToMove: 'Přesun hlavy klikem',
+  clickToMoveHint: 'Kliknutím do plochy pošlete hlavu na dané místo; šipky ji posouvají o 1 mm, se Shiftem o 10 mm. Laser zůstane vypnutý.',
   workAreaLabel: 'Náhled pracovní plochy',
   workAreaDescription:
     'Pracovní plocha {width} × {height} mm. Obrázek na X {x} mm, Y {y} mm, velikost {w} × {h} mm. Šipky posouvají o 1 mm, se Shiftem o 10 mm.',

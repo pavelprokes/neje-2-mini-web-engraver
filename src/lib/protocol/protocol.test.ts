@@ -66,7 +66,7 @@ describe('decodeMessage', () => {
     expect(decodeMessage(fromHex('ff aa 08 04 01 03 2a 55'))).toEqual({ type: 'progress', percent: 42 });
     expect(decodeMessage(fromHex('ff aa 08 0c 01 01 00 55'))).toEqual({ type: 'event', event: 'finished', code: 1 });
     expect(decodeMessage(fromHex('ff aa 0b 06 01 01 00 03 d0 90 55'))).toEqual({ type: 'baudRate', ok: true, baudRate: 250_000 });
-    expect(decodeMessage(fromHex('ff aa 0a 0d 01 50 00 10 00 20 55'))).toEqual({ type: 'position', y: 16, x: 32 });
+    expect(decodeMessage(fromHex('ff aa 0b 0d 01 50 00 10 00 20 55'))).toEqual({ type: 'position', y: 16, x: 32 });
   });
 
   it('reports unknown commands instead of guessing', () => {
