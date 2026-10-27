@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 133 67" shape-rendering="crispEdges">
+  <!-- 10 × 5 mm at 75 µm = 133 × 67 device pixels, so 1 unit = 1 dot. Separates causes of missing
+       detail: line widths 1/2/4/8 dots in both directions, plus an asymmetric solid block. -->
+  <rect x="5" y="4" width="1" height="30"/>
+  <rect x="15" y="4" width="2" height="30"/>
+  <rect x="27" y="4" width="4" height="30"/>
+  <rect x="43" y="4" width="8" height="30"/>
+  <rect x="5" y="40" width="50" height="1"/>
+  <rect x="5" y="45" width="50" height="2"/>
+  <rect x="5" y="51" width="50" height="4"/>
+  <rect x="5" y="58" width="50" height="8"/>
+  <rect x="72" y="4" width="30" height="26"/>
+  <rect x="110" y="40" width="12" height="12"/>
+</svg>

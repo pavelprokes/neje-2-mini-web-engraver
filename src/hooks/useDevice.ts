@@ -47,6 +47,8 @@ export interface Device {
   readonly kind: ConnectionKind | null;
   readonly error: Notice | null;
   readonly traffic: readonly string[];
+  /** Line speed of the current connection, `null` while disconnected. */
+  readonly baudRate: number | null;
   /** `afterConnect` runs once the device identified itself, e.g. a motion self-test. */
   connect(kind: ConnectionKind, afterConnect?: (session: NejeSession) => Promise<void>): Promise<void>;
   disconnect(): Promise<void>;
@@ -133,5 +135,5 @@ export function useDevice({ logTraffic }: { readonly logTraffic: boolean }): Dev
 
   const clearError = useCallback(() => setError(null), []);
 
-  return { snapshot, kind, error, traffic, connect, disconnect, run, clearError };
+  return { snapshot, kind, error, traffic, baudRate: session?.baudRate ?? null, connect, disconnect, run, clearError };
 }

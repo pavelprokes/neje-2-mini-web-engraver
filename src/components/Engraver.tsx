@@ -10,8 +10,8 @@ import { fitPadded, renderRaster, type Raster } from '@/lib/imaging/raster';
 import { DEFAULT_JOB_SETTINGS, DEFAULT_WORK_AREA, estimateSeconds, LIMITS, mmToPx, pxToMm, type JobSettings, type WorkArea as Area } from '@/lib/job';
 import { BUILT_IN_PRESETS, userPresetStore } from '@/lib/presets';
 import { motionTestOnConnect } from '@/lib/storage';
-import { bitmapLength, packBitmap, type NejeSession, type SessionSnapshot } from '@/lib/protocol';
-import { DEFAULT_BAUD_RATE, isWebSerialSupported } from '@/lib/transport/webSerial';
+import { bitmapLength, packBitmap, transferSeconds, type NejeSession, type SessionSnapshot } from '@/lib/protocol';
+import { isWebSerialSupported } from '@/lib/transport/webSerial';
 import { useDebouncedEffect } from './fields';
 import { HistoryPanel } from './HistoryPanel';
 import { JobPhases } from './JobPhases';
@@ -231,8 +231,7 @@ export function Engraver() {
   };
   const burnSeconds = raster ? estimateSeconds(raster.burnedDots, settings.burnTimeMs) : null;
   const estimate = burnSeconds !== null ? t('estimate', { time: duration(burnSeconds) }) : null;
-  // 8N1 framing: 10 bits on the wire per byte
-  const uploadSeconds = raster && device.kind !== 'simulator' ? (bitmapLength(raster.rect.width, raster.rect.height) * 10) / DEFAULT_BAUD_RATE : null;
+  const uploadSeconds = raster && device.kind !== 'simulator' ? transferSeconds(bitmapLength(raster.rect.width, raster.rect.height), device.baudRate ?? undefined) : null;
 
   const outcome =
     job.stage === 'cancelled' ? t('progressCancelled') : job.stage === 'failed' ? t('progressFailed', { reason: t(errorKeyFor(job.code)) }) : null;

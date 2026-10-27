@@ -27,12 +27,12 @@ test('calibration burn, traffic captured', async ({ page }) => {
     await page.getByRole('button', { name: 'Connect engraver' }).click();
     await expect(page.getByRole('status', { name: 'Engraver status' })).toHaveText('Ready', { timeout: 10_000 });
 
-    await page.locator('input[type=file]').setInputFiles(new URL('../fixtures/calibration.svg', import.meta.url).pathname);
+    await page.locator('input[type=file]').setInputFiles(new URL(`../fixtures/${process.env.NEJE_BURN_FIXTURE ?? 'calibration.svg'}`, import.meta.url).pathname);
     await page.getByLabel('Dithering').selectOption('threshold');
     // explicit parameters: never inherit whatever an earlier test left on the machine
     await page.getByLabel('Power').fill(process.env.NEJE_BURN_POWER ?? '80');
     await page.getByLabel('Burn time per dot').fill(process.env.NEJE_BURN_TIME_MS ?? '8');
-    await page.getByLabel('Width (mm)').fill('5');
+    await page.getByLabel('Width (mm)').fill(process.env.NEJE_BURN_WIDTH_MM ?? '5');
     await page.getByLabel('X from left (mm)').fill(process.env.NEJE_BURN_X_MM ?? '10');
     await page.getByLabel('Y from top (mm)').fill(process.env.NEJE_BURN_Y_MM ?? '10');
     await page.getByText('Advanced').click();
