@@ -15,11 +15,12 @@ export const SENSITIVITY_LEVELS = [
 ] as const;
 
 /**
- * Speed mode as the vendor app sets it for models that offer it (0 = slow, 1 = fast, from its
- * settings window). The vendor app does not offer it for the Master 2 Mini, which ships with 2,
- * so the effect on that model is unverified; the UI marks it experimental.
+ * Motor speed as NEJE's Windows software offers it for the Master 2 family: a four-step slider,
+ * Medium (2) being the default and what a factory Master 2 Mini reports.
  */
 export const SPEED_MODES = [
-  { value: 0, key: 'speedSlow' },
-  { value: 1, key: 'speedFast' },
+  { value: 0, key: 'speedSlowest' },
+  { value: 1, key: 'speedSlow' },
+  { value: 2, key: 'speedMedium' },
+  { value: 3, key: 'speedFast' },
 ] as const;

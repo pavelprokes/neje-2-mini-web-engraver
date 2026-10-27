@@ -244,6 +244,9 @@ export function LaserPanel({ power, burnTimeMs, disabled, patch, presets, select
           if (p) patch({ power: p.power, burnTimeMs: p.burnTimeMs });
         }}
       />
+      <p className="hint" style={{ marginTop: 0 }}>
+        {t('presetsHint')}
+      </p>
       <RangeField label={t('power')} {...LIMITS.power} value={power} display={`${power} %`} onChange={(v) => patch({ power: v })} />
       <RangeField label={t('burnTime')} {...LIMITS.burnTimeMs} value={burnTimeMs} display={`${burnTimeMs} ms`} onChange={(v) => patch({ burnTimeMs: v })} />
       <form

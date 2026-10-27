@@ -54,9 +54,9 @@ works offline. Built and tested with a **NEJE Master 2 Mini**.
   switched off.
 
 **Laser, machine and history**
-- **Material presets**, built-in and your own, plus a rough time estimate.
+- **Material presets:** NEJE's reference burning times (wood, bamboo, leather, acrylic …) and your own, plus a rough time estimate.
 - **Machine settings**, stored in the engraver itself: pointer brightness when idle, motion-detection
-  sensitivity, and an experimental speed mode.
+  sensitivity, and motor speed (Slowest to Fast, as in NEJE's Windows software).
 - **History** of every job, with its image and all settings. You can open an entry, reuse only its
   settings, or drop in a new image to swap the motif and keep everything else. The start dialog asks
   whether to save, and *yes* is the default.
@@ -89,7 +89,8 @@ The software cannot detect this, because the steppers have no feedback. These ar
 - **Lines shift part-way through a job and stay shifted.** This happens with the vendor app too. The
   [NEJE manual](https://neje.wiki/doku.php?id=nejelaser_master_2_mini) says a loose belt causes image
   offset. Tighten the belt at its two adjustment points and check that the motor pulley's grub screws
-  are tight. With the machine off, the head should move freely by hand along the whole axis.
+  are tight. With the machine off, the head should move freely by hand along the whole axis. A slower
+  **motor speed** (*Machine* tab) can also help.
 - **Everything is blurry.** Set the laser 30–50 mm above the material (usually 40 mm) and turn the
   focus cap until the dot is as small as possible. The *Focus and resolution* test pattern shows the
   result.
@@ -101,7 +102,7 @@ The software cannot detect this, because the steppers have no feedback. These ar
 | Connect, identify, telemetry, reconnect, homing, head moves | ✅ verified on a Master 2 Mini (automated hardware test) |
 | Laser parameters (power, burn time) | ✅ verified in real burns, stored by the device across power cycles |
 | Machine settings: pointer brightness, motion detection | Implemented to the vendor protocol, not yet changed on hardware |
-| Speed mode | Experimental: the vendor values (0 slow, 1 fast) are not offered for the Master 2 Mini by the vendor app |
+| Motor speed | Values 0–3 (Slowest–Fast) as in NEJE's Windows software for the Master 2 family; the Mini reports 2 (Medium). Not yet changed on hardware |
 | Job upload and burn, trace frame, cancel | ✅ verified with a real calibration burn (traffic captured, see docs/PROTOCOL.md) |
 | Pause/resume | Implemented to the vendor protocol, covered by simulator tests, not yet tried on hardware |
 | Odd-row bit order | Two variants selectable (*Advanced*) until a calibration burn decides |

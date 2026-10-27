@@ -1,5 +1,5 @@
 /**
- * Laser presets. Built-ins are starting points only (labelled as approximate in the UI);
+ * Laser presets. Built-ins are NEJE's reference values, a starting point (said so in the UI);
  * user presets live in localStorage of this browser.
  */
 import { LIMITS } from '@/lib/job';
@@ -12,13 +12,26 @@ export interface Preset {
   readonly burnTimeMs: number;
 }
 
-export type BuiltInPresetKey = 'presetLightWood' | 'presetPlywood' | 'presetLeather' | 'presetCardboard';
+export type BuiltInPresetKey =
+  | 'presetWoodPaper'
+  | 'presetBamboo'
+  | 'presetPlastic'
+  | 'presetLeather'
+  | 'presetAcrylic'
+  | 'presetBone'
+  | 'presetPaintedMetal'
+  | 'presetRubber';
 
+/** NEJE's reference burning times for the Master 2 family at 100 % power (NEJE wiki, "Setting"). */
 export const BUILT_IN_PRESETS: readonly Preset[] = [
-  { id: 'light-wood', label: { key: 'presetLightWood' }, power: 100, burnTimeMs: 10 },
-  { id: 'plywood', label: { key: 'presetPlywood' }, power: 100, burnTimeMs: 14 },
-  { id: 'leather', label: { key: 'presetLeather' }, power: 80, burnTimeMs: 6 },
-  { id: 'cardboard', label: { key: 'presetCardboard' }, power: 60, burnTimeMs: 3 },
+  { id: 'wood-paper', label: { key: 'presetWoodPaper' }, power: 100, burnTimeMs: 30 },
+  { id: 'bamboo', label: { key: 'presetBamboo' }, power: 100, burnTimeMs: 30 },
+  { id: 'plastic', label: { key: 'presetPlastic' }, power: 100, burnTimeMs: 40 },
+  { id: 'leather', label: { key: 'presetLeather' }, power: 100, burnTimeMs: 20 },
+  { id: 'acrylic', label: { key: 'presetAcrylic' }, power: 100, burnTimeMs: 30 },
+  { id: 'bone', label: { key: 'presetBone' }, power: 100, burnTimeMs: 30 },
+  { id: 'painted-metal', label: { key: 'presetPaintedMetal' }, power: 100, burnTimeMs: 30 },
+  { id: 'rubber', label: { key: 'presetRubber' }, power: 100, burnTimeMs: 50 },
 ];
 
 const STORAGE_KEY = 'neje.presets.v1';
