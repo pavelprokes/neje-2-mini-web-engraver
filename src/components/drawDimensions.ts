@@ -83,10 +83,9 @@ function dimension(ctx: CanvasRenderingContext2D, placed: Box[], from: Point, to
 /** Draws image size and offsets, head-to-edge distances and head-to-image-corner offsets. */
 export function drawDimensions(ctx: CanvasRenderingContext2D, area: { width: number; height: number }, image: Rect | null, head: Point | null, d: Dimensions, s: Style) {
   const placed: Box[] = [];
+  // Drawn in order of importance: when labels compete for space, later ones give way.
   if (image && d.image) {
     const { x, y, width, height } = image;
-    const cx = x + width / 2;
-    const cy = y + height / 2;
     const gap = 14 * s.unit;
     // size along the outside of the box: above/left when there is room, else below/right,
     // else (box fills the area) just inside the box
@@ -96,10 +95,10 @@ export function drawDimensions(ctx: CanvasRenderingContext2D, area: { width: num
     const sizeX = outside(x, width, area.width);
     dimension(ctx, placed, { x, y: sizeY }, { x: x + width, y: sizeY }, s.label(d.image.width), COLORS.image, s, -1);
     dimension(ctx, placed, { x: sizeX, y }, { x: sizeX, y: y + height }, s.label(d.image.height), COLORS.image, s, -1);
-    dimension(ctx, placed, { x: 0, y: cy }, { x, y: cy }, s.label(d.image.left), COLORS.image, s);
-    dimension(ctx, placed, { x: x + width, y: cy }, { x: area.width, y: cy }, s.label(d.image.right), COLORS.image, s);
-    dimension(ctx, placed, { x: cx, y: 0 }, { x: cx, y }, s.label(d.image.top), COLORS.image, s);
-    dimension(ctx, placed, { x: cx, y: y + height }, { x: cx, y: area.height }, s.label(d.image.bottom), COLORS.image, s);
+  }
+  if (head && image && d.headToImage) {
+    dimension(ctx, placed, { x: head.x, y: head.y }, { x: image.x, y: head.y }, s.label(d.headToImage.dx), COLORS.relative, s, -1);
+    dimension(ctx, placed, { x: head.x, y: head.y }, { x: head.x, y: image.y }, s.label(d.headToImage.dy), COLORS.relative, s, -1);
   }
   if (head && d.head) {
     dimension(ctx, placed, { x: 0, y: head.y }, { x: head.x, y: head.y }, s.label(d.head.left), COLORS.head, s);
@@ -107,9 +106,13 @@ export function drawDimensions(ctx: CanvasRenderingContext2D, area: { width: num
     dimension(ctx, placed, { x: head.x, y: 0 }, { x: head.x, y: head.y }, s.label(d.head.top), COLORS.head, s);
     dimension(ctx, placed, { x: head.x, y: head.y }, { x: head.x, y: area.height }, s.label(d.head.bottom), COLORS.head, s);
   }
-  if (head && image && d.headToImage) {
-    // drawn last and labelled on the other side, so it reads clearly over the head lines
-    dimension(ctx, placed, { x: head.x, y: head.y }, { x: image.x, y: head.y }, s.label(d.headToImage.dx), COLORS.relative, s, -1);
-    dimension(ctx, placed, { x: head.x, y: head.y }, { x: head.x, y: image.y }, s.label(d.headToImage.dy), COLORS.relative, s, -1);
+  if (image && d.image) {
+    const { x, y, width, height } = image;
+    const cx = x + width / 2;
+    const cy = y + height / 2;
+    dimension(ctx, placed, { x: 0, y: cy }, { x, y: cy }, s.label(d.image.left), COLORS.image, s);
+    dimension(ctx, placed, { x: x + width, y: cy }, { x: area.width, y: cy }, s.label(d.image.right), COLORS.image, s);
+    dimension(ctx, placed, { x: cx, y: 0 }, { x: cx, y }, s.label(d.image.top), COLORS.image, s);
+    dimension(ctx, placed, { x: cx, y: y + height }, { x: cx, y: area.height }, s.label(d.image.bottom), COLORS.image, s);
   }
 }

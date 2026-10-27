@@ -367,8 +367,14 @@ test.describe('layout, tabs and new tools', () => {
     await page.keyboard.press('ArrowRight'); // wraps around
     await expect(image).toHaveAttribute('aria-selected', 'true');
     await openTab(page, 'History');
-    await page.reload();
+    // a second window of the app keeps its own tab
+    const other = await page.context().newPage();
+    await other.goto('/');
+    await openTab(other, 'Machine');
     await expect(page.getByRole('tab', { name: 'History', exact: true })).toHaveAttribute('aria-selected', 'true');
+    await other.close();
+    await page.reload();
+    await expect(page.getByRole('tab', { name: /^(History|Machine)$/, selected: true })).toBeVisible(); // the last choice is remembered
   });
 
   test('the start dialog can skip saving to history (saving is the default)', async ({ page }) => {
@@ -408,6 +414,10 @@ test.describe('layout, tabs and new tools', () => {
 
     await page.locator('input[type=file][accept*="json"]').setInputFiles(file);
     await expect(page.getByRole('button', { name: 'Open photo.png with its settings' })).toBeVisible();
+    // importing the same backup again does not duplicate it
+    await page.locator('input[type=file][accept*="json"]').setInputFiles(file);
+    await expect(page.getByText('Imported 0 entries.')).toBeAttached();
+    await expect(page.getByRole('button', { name: 'Open photo.png with its settings' })).toHaveCount(1);
     await page.locator('input[type=file][accept*="json"]').setInputFiles({ name: 'evil.json', mimeType: 'application/json', buffer: Buffer.from('{"format":"x"}') });
     await expect(page.getByRole('alert').filter({ hasText: 'could not be imported' })).toBeVisible();
   });
@@ -461,7 +471,10 @@ test.describe('layout, tabs and new tools', () => {
   test('help explains connection and quality problems', async ({ page }) => {
     await openTab(page, 'Help');
     await expect(page.getByRole('heading', { name: 'The engraver does not connect' })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'NEJE Master 2 Mini manual' })).toHaveAttribute('href', /neje\.wiki/);
+    const manual = page.getByRole('link', { name: 'NEJE Master 2 Mini manual (opens in a new tab)' });
+    await expect(manual).toHaveAttribute('href', /neje\.wiki/);
+    await expect(manual).toHaveAttribute('target', '_blank'); // leaving the page would drop the connection
+    await expect(manual).toHaveAttribute('rel', 'noopener noreferrer');
   });
 
   for (const colorScheme of ['light', 'dark'] as const) {

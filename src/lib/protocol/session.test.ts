@@ -54,6 +54,15 @@ describe('NejeSession', () => {
     expect((await echo).params).toEqual({ burnTimeMs: 7, power: 55, level: 10, sensitivity: 0, mode: 2 });
   });
 
+  it('composes parameter changes made concurrently (none overwrites another)', async () => {
+    const { sim, session } = setup();
+    await session.connect();
+    await until(session, (s) => s.params !== null);
+    await Promise.all([session.setLaserParams({ power: 30 }), session.setLaserParams({ sensitivity: 2 })]);
+    const last = sim.received.filter((b) => b[3] === 0x03).at(-1)!;
+    expect([last[6], last[8]]).toEqual([30, 2]); // power and sensitivity both kept
+  });
+
   it('runs a job from upload to finish', async () => {
     const { sim, session } = setup();
     await session.connect();

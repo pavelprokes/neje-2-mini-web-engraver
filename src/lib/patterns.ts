@@ -1,7 +1,7 @@
 /**
  * Built-in test patterns for calibrating focus, power and mechanics. They are designed so one SVG
- * unit is one device dot at the given width (75 µm), hence the fixed `widthMm` and the threshold
- * (no dithering) they are inserted with.
+ * unit is one device dot, hence their width in dots (sized by the machine's pitch, 75 µm on the
+ * Master 2 family) and the threshold (no dithering) they are inserted with.
  */
 import type { MessageKey } from '@/i18n';
 
@@ -10,7 +10,8 @@ export interface TestPattern {
   readonly nameKey: MessageKey;
   readonly descriptionKey: MessageKey;
   readonly fileName: string;
-  readonly widthMm: number;
+  /** Width in device dots: the SVG's viewBox width, 1 unit = 1 dot. */
+  readonly widthDots: number;
   readonly svg: string;
 }
 
@@ -20,7 +21,7 @@ export const TEST_PATTERNS: readonly TestPattern[] = [
     nameKey: 'patternFocus',
     descriptionKey: 'patternFocusHint',
     fileName: 'focus-test.svg',
-    widthMm: 20,
+    widthDots: 267,
     svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 267 160" shape-rendering="crispEdges">
   <!-- Focus and resolution test (20 × 12 mm at 75 µm, 1 unit = 1 dot). Left: groups of three
        lines, line = gap = 1, 2, 3, 4 dots, vertical on top, horizontal below. Right: rings
@@ -65,7 +66,7 @@ export const TEST_PATTERNS: readonly TestPattern[] = [
     nameKey: 'patternLines',
     descriptionKey: 'patternLinesHint',
     fileName: 'line-widths.svg',
-    widthMm: 10,
+    widthDots: 133,
     svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 133 67" shape-rendering="crispEdges">
   <!-- 10 × 5 mm at 75 µm = 133 × 67 device pixels, so 1 unit = 1 dot. Separates causes of missing
        detail: line widths 1/2/4/8 dots in both directions, plus an asymmetric solid block. -->
@@ -86,14 +87,14 @@ export const TEST_PATTERNS: readonly TestPattern[] = [
     nameKey: 'patternSquare',
     descriptionKey: 'patternSquareHint',
     fileName: 'calibration-square.svg',
-    widthMm: 5,
-    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <!-- Calibration pattern: frame, vertical bars (odd-row bit order shows as jagged edges), diagonal. -->
-  <rect x="2" y="2" width="96" height="96" fill="none" stroke="#000" stroke-width="4"/>
-  <rect x="20" y="10" width="3" height="80"/>
-  <rect x="47" y="10" width="6" height="80"/>
-  <rect x="75" y="10" width="1.5" height="80"/>
-  <path d="M10 90 L90 10" stroke="#000" stroke-width="3"/>
+    widthDots: 67,
+    // 5 × 5 mm on the 67-dot grid: 2-dot frame, bars of 1, 2 and 4 dots, 2-dot diagonal
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 67 67" shape-rendering="crispEdges">
+  <path d="M0 0h67v67H0zM2 2v63h63V2z" fill-rule="evenodd"/>
+  <rect x="14" y="7" width="1" height="53"/>
+  <rect x="31" y="7" width="4" height="53"/>
+  <rect x="50" y="7" width="2" height="53"/>
+  <path d="M7 60 L60 7" stroke="#000" stroke-width="2" shape-rendering="geometricPrecision"/>
 </svg>`,
   },
 ];

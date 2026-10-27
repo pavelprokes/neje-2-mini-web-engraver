@@ -3,6 +3,7 @@
  * Data stays in the user's browser. All functions reject if IndexedDB is unavailable
  * (e.g. some private-browsing modes); callers treat history as optional.
  */
+import type { PortableEntry } from '@/lib/historyFile';
 import { parseJobSettings, type JobSettings } from '@/lib/job';
 
 const DB_NAME = 'neje-web-engraver';
@@ -67,12 +68,36 @@ export async function removeHistory(id: number): Promise<void> {
   await run('readwrite', (s) => s.delete(id));
 }
 
-/** Adds imported entries, keeping their original dates; returns how many were added. */
-export async function importHistory(entries: readonly { name: string; createdAt: number; asset: Blob; thumbnail: Blob; settings: JobSettings }[]): Promise<number> {
-  for (const e of entries) await run('readwrite', (s) => s.add({ ...e }));
+/**
+ * Adds imported entries in one transaction (all or nothing), skipping ones already present (same
+ * name and date), so importing a backup twice does not duplicate it. Returns how many new entries
+ * are in the history afterwards, after pruning to the limit.
+ */
+export async function importHistory(entries: readonly PortableEntry[]): Promise<number> {
+  const conn = await database();
+  const added = await new Promise<number[]>((resolve, reject) => {
+    const tx = conn.transaction(STORE, 'readwrite');
+    const store = tx.objectStore(STORE);
+    const ids: number[] = [];
+    const existing = store.getAll();
+    existing.onsuccess = () => {
+      const seen = new Set((existing.result as { name?: unknown; createdAt?: unknown }[]).map((r) => `${r.createdAt}|${r.name}`));
+      for (const e of entries) {
+        const key = `${e.createdAt}|${e.name}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        store.add({ ...e }).onsuccess = (ev) => ids.push((ev.target as IDBRequest<number>).result);
+      }
+    };
+    tx.oncomplete = () => resolve(ids);
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error);
+  });
   const all = await listHistory();
-  await Promise.all(all.slice(HISTORY_LIMIT).map((old) => removeHistory(old.id)));
-  return entries.length;
+  const pruned = all.slice(HISTORY_LIMIT);
+  await Promise.all(pruned.map((old) => removeHistory(old.id)));
+  const gone = new Set(pruned.map((e) => e.id));
+  return added.filter((id) => !gone.has(id)).length;
 }
 
 export async function clearHistory(): Promise<void> {

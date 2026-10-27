@@ -354,9 +354,11 @@ export class NejeSession {
   }
 
   private async sendParams(patch: LaserParamsPatch): Promise<void> {
+    // The device takes all parameters in one frame. Update the snapshot before writing, so a
+    // second change made while this one is in flight builds on it instead of undoing it.
     const params = { ...(this.snapshot.params ?? FALLBACK_PARAMS), ...patch };
-    await this.send(commands.setLaserParams(params));
     this.update({ params });
+    await this.send(commands.setLaserParams(params));
   }
 
   async previewOn(rect: Rect): Promise<void> {
