@@ -22,11 +22,15 @@ export class HistoryFileError extends Error {
   override readonly name = 'HistoryFileError';
 }
 
-async function toDataUrl(blob: Blob): Promise<string> {
+/** Files picked by name (e.g. `.svg` with an empty `type`) still get an image type. */
+const imageType = (blob: Blob, name: string): string =>
+  blob.type.startsWith('image/') ? blob.type : /\.svgz?$/i.test(name) ? 'image/svg+xml' : 'image/png';
+
+async function toDataUrl(blob: Blob, type: string): Promise<string> {
   const bytes = new Uint8Array(await blob.arrayBuffer());
   let binary = '';
   for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-  return `data:${blob.type || 'application/octet-stream'};base64,${btoa(binary)}`;
+  return `data:${type};base64,${btoa(binary)}`;
 }
 
 const DATA_URL = /^data:(image\/[\w.+-]+);base64,([A-Za-z0-9+/=]+)$/;
@@ -43,12 +47,24 @@ function fromDataUrl(value: unknown): Blob {
 export async function serializeHistory(entries: readonly PortableEntry[]): Promise<string> {
   const items = [];
   for (const e of entries) {
-    items.push({ name: e.name, createdAt: e.createdAt, settings: e.settings, asset: await toDataUrl(e.asset), thumbnail: await toDataUrl(e.thumbnail) });
+    items.push({
+      name: e.name,
+      createdAt: e.createdAt,
+      settings: e.settings,
+      asset: await toDataUrl(e.asset, imageType(e.asset, e.name)),
+      thumbnail: await toDataUrl(e.thumbnail, imageType(e.thumbnail, 'thumbnail.png')),
+    });
   }
   return JSON.stringify({ format: HISTORY_FORMAT, version: HISTORY_FILE_VERSION, exportedAt: Date.now(), entries: items });
 }
 
-export function parseHistoryFile(text: string): PortableEntry[] {
+export interface ParsedHistoryFile {
+  readonly entries: PortableEntry[];
+  /** Entries that were unreadable and left out (the rest still import). */
+  readonly skipped: number;
+}
+
+export function parseHistoryFile(text: string): ParsedHistoryFile {
   let data: unknown;
   try {
     data = JSON.parse(text);
@@ -59,14 +75,22 @@ export function parseHistoryFile(text: string): PortableEntry[] {
   if (root.format !== HISTORY_FORMAT) throw new HistoryFileError('not a history export');
   if (typeof root.version !== 'number' || root.version > HISTORY_FILE_VERSION) throw new HistoryFileError('made by a newer version of the app');
   if (!Array.isArray(root.entries)) throw new HistoryFileError('no entries');
-  return root.entries.map((raw: unknown) => {
+  const entries: PortableEntry[] = [];
+  for (const raw of root.entries as unknown[]) {
     const e = (typeof raw === 'object' && raw !== null ? raw : {}) as Record<string, unknown>;
-    return {
-      name: typeof e.name === 'string' && e.name.trim() ? e.name.slice(0, 200) : 'image',
-      createdAt: typeof e.createdAt === 'number' && Number.isFinite(e.createdAt) ? e.createdAt : Date.now(),
-      settings: parseJobSettings(e.settings),
-      asset: fromDataUrl(e.asset),
-      thumbnail: fromDataUrl(e.thumbnail),
-    };
-  });
+    try {
+      entries.push({
+        name: typeof e.name === 'string' && e.name.trim() ? e.name.slice(0, 200) : 'image',
+        createdAt: typeof e.createdAt === 'number' && Number.isFinite(e.createdAt) ? e.createdAt : Date.now(),
+        settings: parseJobSettings(e.settings),
+        asset: fromDataUrl(e.asset),
+        thumbnail: fromDataUrl(e.thumbnail),
+      });
+    } catch {
+      // one bad entry must not cost the user the whole backup
+    }
+  }
+  const skipped = root.entries.length - entries.length;
+  if (entries.length === 0 && skipped > 0) throw new HistoryFileError('no readable entries');
+  return { entries, skipped };
 }

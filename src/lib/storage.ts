@@ -1,6 +1,7 @@
 /**
  * A localStorage-backed value usable with React's `useSyncExternalStore`: the server snapshot
- * is a fixed default (static HTML), the client reads storage, and other tabs stay in sync.
+ * is a fixed default (static HTML), the client reads storage, and other tabs stay in sync unless
+ * `syncTabs` is off (for per-window UI state that should only be remembered, not mirrored).
  */
 export interface LocalStore<T> {
   subscribe(listener: () => void): () => void;
@@ -9,7 +10,7 @@ export interface LocalStore<T> {
   set(value: T): void;
 }
 
-export function createLocalStore<T>(key: string, fallback: T, parse: (raw: unknown) => T | undefined): LocalStore<T> {
+export function createLocalStore<T>(key: string, fallback: T, parse: (raw: unknown) => T | undefined, { syncTabs = true } = {}): LocalStore<T> {
   let cached: { value: T } | null = null;
   const listeners = new Set<() => void>();
 
@@ -30,10 +31,10 @@ export function createLocalStore<T>(key: string, fallback: T, parse: (raw: unkno
         listener();
       };
       listeners.add(listener);
-      window.addEventListener('storage', onStorage);
+      if (syncTabs) window.addEventListener('storage', onStorage);
       return () => {
         listeners.delete(listener);
-        window.removeEventListener('storage', onStorage);
+        if (syncTabs) window.removeEventListener('storage', onStorage);
       };
     },
     getSnapshot: () => (cached ??= { value: read() }).value,

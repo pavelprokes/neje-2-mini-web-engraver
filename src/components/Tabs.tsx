@@ -9,7 +9,8 @@ export interface Tab {
   readonly content: ReactNode;
 }
 
-const selectedTab = createLocalStore<string>('neje.tab.v1', '', (v) => (typeof v === 'string' ? v : undefined));
+// remembered for the next visit, but not mirrored into other open windows of the app
+const selectedTab = createLocalStore<string>('neje.tab.v1', '', (v) => (typeof v === 'string' ? v : undefined), { syncTabs: false });
 
 /** Selects a tab from outside, e.g. "How to fix it" next to a connection error. */
 export const selectTab = (id: string) => selectedTab.set(id);

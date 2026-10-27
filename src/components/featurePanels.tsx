@@ -111,6 +111,8 @@ export function MachinePanel({ params, disabled, onChange }: MachinePanelProps) 
   const sensitivityHint = useId();
   // the slider moves freely; the device gets the value once it settles
   const [level, setLevel] = useState<number | null>(null);
+  // drop the local value once the device has it, or when disconnected (it may be another machine next)
+  if (level !== null && (!params || params.level === level)) setLevel(null);
   useDebouncedEffect(level, 300, (value) => {
     if (value !== null && params && value !== params.level) onChange({ level: value });
   });
@@ -124,8 +126,17 @@ export function MachinePanel({ params, disabled, onChange }: MachinePanelProps) 
   }
 
   const shownLevel = level ?? params.level;
-  const speedOptions = SPEED_MODES.map((m) => ({ value: String(m.value), label: t(m.key) }));
-  if (!SPEED_MODES.some((m) => m.value === params.mode)) speedOptions.push({ value: String(params.mode), label: t('speedDevice', { value: params.mode }) });
+  // a value outside the known scale is shown as such instead of silently as the first option
+  const withDeviceValue = (options: { value: string; label: string }[], value: number) =>
+    options.some((o) => o.value === String(value)) ? options : [...options, { value: String(value), label: t('speedDevice', { value }) }];
+  const speedOptions = withDeviceValue(
+    SPEED_MODES.map((m) => ({ value: String(m.value), label: t(m.key) })),
+    params.mode,
+  );
+  const sensitivityOptions = withDeviceValue(
+    SENSITIVITY_LEVELS.map((s) => ({ value: String(s.value), label: t(s.key) })),
+    params.sensitivity,
+  );
 
   return (
     <Panel title={t('machineHeading')}>
@@ -138,7 +149,7 @@ export function MachinePanel({ params, disabled, onChange }: MachinePanelProps) 
           label={t('sensitivity')}
           value={String(params.sensitivity)}
           describedBy={sensitivityHint}
-          options={SENSITIVITY_LEVELS.map((s) => ({ value: String(s.value), label: t(s.key) }))}
+          options={sensitivityOptions}
           onChange={(v) => onChange({ sensitivity: Number(v) })}
         />
         <p id={sensitivityHint} className="hint">
@@ -156,6 +167,17 @@ export function MachinePanel({ params, disabled, onChange }: MachinePanelProps) 
 // ---------------------------------------------------------------------------------------------
 
 const MANUAL_URL = 'https://neje.wiki/doku.php?id=nejelaser_master_2_mini';
+
+/** Opens outside the app: leaving the page would drop the serial connection and the loaded motif. */
+function ExternalLink({ href, children }: { readonly href: string; readonly children: string }) {
+  const { t } = useI18n();
+  return (
+    <a href={href} target="_blank" rel="noopener noreferrer">
+      {children}
+      <span className="visually-hidden"> {t('opensNewTab')}</span>
+    </a>
+  );
+}
 const DRIVER_URL = 'https://neje99.com/faq/how-to-install-serial-driver.html';
 
 export function HelpPanel() {
@@ -169,7 +191,7 @@ export function HelpPanel() {
         <li>{t('helpConnect3')}</li>
         <li>{t('helpConnect4')}</li>
         <li>
-          {t('helpConnect5')} <a href={DRIVER_URL}>{t('helpDriver')}</a>
+          {t('helpConnect5')} <ExternalLink href={DRIVER_URL}>{t('helpDriver')}</ExternalLink>
         </li>
       </ol>
       <h3 style={{ fontSize: '1rem', margin: '1rem 0 0.25rem' }}>{t('helpQualityHeading')}</h3>
@@ -180,7 +202,7 @@ export function HelpPanel() {
         <li>{t('helpQuality4')}</li>
       </ul>
       <p className="hint">
-        <a href={MANUAL_URL}>{t('helpManual')}</a>
+        <ExternalLink href={MANUAL_URL}>{t('helpManual')}</ExternalLink>
       </p>
     </Panel>
   );

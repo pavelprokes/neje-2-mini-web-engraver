@@ -220,9 +220,9 @@ export function Engraver() {
   };
 
   const insertPattern = async (pattern: TestPattern) => {
-    // calibration patterns are drawn 1 unit = 1 dot: use their size, no dithering. Applied
-    // before the (async) load, so anything the user changes meanwhile is not overwritten.
-    patch({ widthMm: pattern.widthMm, dither: 'threshold', invert: false, rotation: 0, mirrored: false });
+    // calibration patterns are drawn 1 unit = 1 dot: size them for this machine's dot pitch, no
+    // dithering. Applied before the (async) load, so a change the user makes meanwhile wins.
+    patch({ widthMm: pxToMm(pattern.widthDots, area), dither: 'threshold', invert: false, rotation: 0, mirrored: false });
     await loadFile(patternFile(pattern));
   };
 
@@ -241,8 +241,9 @@ export function Engraver() {
   const importHistoryFile = async (file: File) => {
     try {
       if (file.size > MAX_IMPORT_BYTES) throw new HistoryFileError('file too large');
-      const count = await importHistory(parseHistoryFile(await file.text()));
-      setAnnouncement(t('historyImported', { count }));
+      const { entries, skipped } = parseHistoryFile(await file.text());
+      const count = await importHistory(entries);
+      setAnnouncement(skipped ? t('historyImportPartial', { count, skipped }) : t('historyImported', { count }));
       refreshHistory();
     } catch (e) {
       setLocalError({ key: 'historyImportError', vars: { reason: e instanceof Error ? e.message : String(e) } });
