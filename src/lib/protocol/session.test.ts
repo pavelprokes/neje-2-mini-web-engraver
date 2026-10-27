@@ -217,10 +217,31 @@ describe('NejeSession', () => {
     await session.home();
     await session.engrave({ x: 0, y: 0, width: 8, height: 1 }, new Uint8Array(1));
     expect(session.getSnapshot().head).toBeNull();
-    // position reports during a burn keep it known
+    // position reports during a burn are not trusted: their reference frame is unverified
     sim.emit(fromHex('ff aa 0b 0d 01 50 00 10 00 20 55'));
     await new Promise((r) => setTimeout(r, 0));
-    expect(session.getSnapshot().head).toEqual({ x: 32, y: 16 });
+    expect(session.getSnapshot().head).toBeNull();
+  });
+
+  it('starts a job straight after switching a trace off, without a parking move', async () => {
+    const { sim, session } = setup();
+    await session.connect();
+    await session.previewOn({ x: 16, y: 24, width: 8, height: 8 });
+    const before = sim.received.length;
+    await session.engrave({ x: 0, y: 0, width: 8, height: 1 }, new Uint8Array(1));
+    const frames = sim.received.slice(before).filter((b) => b[0] === 0xff && b[1] === 0xaa).map((b) => `${b[3]}:${b[6]}`);
+    expect(frames).toEqual(['5:0', '4:80']); // preview off, then start job: no move in between
+  });
+
+  it('an emergency stop during a trace does not move the head', async () => {
+    const { sim, session } = setup();
+    await session.connect();
+    await session.previewOn({ x: 16, y: 24, width: 8, height: 8 });
+    const before = sim.received.length;
+    await session.stop();
+    expect(sim.received.slice(before).map((b) => `${b[3]}:${b[6]}`)).toEqual(['2:2', '5:0']);
+    await session.previewOff(); // nothing left to park at
+    expect(sim.received.slice(before).some((b) => b[3] === 0x05 && b[6] === 1)).toBe(false);
   });
 
   it('flags a device that stops sending its heartbeat, and recovers', async () => {

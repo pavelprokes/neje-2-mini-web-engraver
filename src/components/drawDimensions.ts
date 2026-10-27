@@ -1,7 +1,9 @@
 import type { Dimensions } from '@/lib/dimensions';
 import type { Point, Rect } from '@/lib/protocol';
 
-const COLORS = { image: '#c81e1e', head: '#1d4ed8', relative: '#b45309' } as const;
+/** Shared by the canvas and the text table, so both use the same colour per group. */
+export const DIMENSION_COLORS = { image: '#c81e1e', head: '#1d4ed8', relative: '#b45309' } as const;
+const COLORS = DIMENSION_COLORS;
 
 interface Style {
   /** Device pixels per CSS pixel on screen, so strokes and text keep a constant size. */
@@ -53,9 +55,12 @@ export function drawDimensions(ctx: CanvasRenderingContext2D, area: { width: num
     const cx = x + width / 2;
     const cy = y + height / 2;
     const gap = 14 * s.unit;
-    // size along the outside of the box, flipped inside when the box touches the area edge
-    const sizeY = y - gap > 0 ? y - gap : y + height + gap;
-    const sizeX = x - gap > 0 ? x - gap : x + width + gap;
+    // size along the outside of the box: above/left when there is room, else below/right,
+    // else (box fills the area) just inside the box
+    const outside = (start: number, size: number, limit: number) =>
+      start - gap > 0 ? start - gap : start + size + gap < limit ? start + size + gap : start + gap;
+    const sizeY = outside(y, height, area.height);
+    const sizeX = outside(x, width, area.width);
     dimension(ctx, { x, y: sizeY }, { x: x + width, y: sizeY }, s.label(d.image.width), COLORS.image, s, -1);
     dimension(ctx, { x: sizeX, y }, { x: sizeX, y: y + height }, s.label(d.image.height), COLORS.image, s, -1);
     dimension(ctx, { x: 0, y: cy }, { x, y: cy }, s.label(d.image.left), COLORS.image, s);

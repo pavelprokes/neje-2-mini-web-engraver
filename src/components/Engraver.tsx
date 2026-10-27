@@ -332,7 +332,6 @@ export function Engraver() {
             canTestMotion={connected && !jobActive && !motionTesting}
             motionTesting={motionTesting}
             onTestMotion={() => void run(testMotion)}
-            onGoHome={() => void run((s) => s.home())}
           />
           <LaserPanel
             power={settings.power}
