@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useRef, useState, type DragEvent } from 'react';
+import { useId, useRef, useState, type DragEvent, type ReactNode } from 'react';
 import { LOCALE_NAMES, LOCALES, type MessageKey } from '@/i18n';
 import { useI18n, type LocalePreference } from '@/i18n/I18nProvider';
 import { ACCEPTED_TYPES } from '@/lib/imaging/decode';
@@ -278,7 +278,6 @@ export function LaserPanel({ power, burnTimeMs, disabled, patch, presets, select
 interface EngravePanelProps {
   readonly connected: boolean;
   readonly hasMotif: boolean;
-  readonly jobActive: boolean;
   /** A job, upload or motion routine is running. */
   readonly busy: boolean;
   readonly canPause: boolean;
@@ -286,10 +285,11 @@ interface EngravePanelProps {
   /** Changes once per job stage; announced to screen readers. */
   readonly stageText: string;
   readonly previewing: boolean;
-  readonly progress: number | null;
-  readonly progressText: string;
   readonly estimate: string | null;
+  /** The two-phase progress display. */
+  readonly progress: ReactNode;
   readonly onTrace: () => void;
+  readonly onStop: () => void;
   readonly onPauseResume: () => void;
   readonly onStart: () => void;
 }
@@ -297,14 +297,16 @@ interface EngravePanelProps {
 export function EngravePanel(p: EngravePanelProps) {
   const { t } = useI18n();
   const traceHint = useId();
-  const progressId = useId();
   const ready = p.connected && p.hasMotif && !p.busy;
   return (
     <Panel title={t('engraveHeading')}>
       <p className="notice">{t('safetyNote')}</p>
       <div className="row">
-        <button type="button" aria-pressed={p.previewing} onClick={p.onTrace} disabled={!ready} aria-describedby={traceHint}>
+        <button type="button" aria-pressed={p.previewing} onClick={p.onTrace} disabled={!ready && !p.previewing} aria-describedby={traceHint}>
           {p.previewing ? t('traceStop') : t('traceFrame')}
+        </button>
+        <button type="button" className="stop-button" onClick={p.onStop} disabled={!p.connected} aria-keyshortcuts="Escape">
+          {t('stopJob')}
         </button>
         <button type="button" onClick={p.onPauseResume} disabled={!p.canPause}>
           {p.paused ? t('resume') : t('pause')}
@@ -318,17 +320,11 @@ export function EngravePanel(p: EngravePanelProps) {
           {t('start')}
         </button>
       </div>
-      <div style={{ marginTop: '0.75rem' }}>
-        <label htmlFor={progressId} className="visually-hidden">
-          {t('progressLabel')}
-        </label>
-        <progress id={progressId} max={100} value={p.progress ?? undefined} aria-valuetext={p.progressText} />
-        <p className="hint">{p.progressText}</p>
-        <p className="visually-hidden" aria-live="polite">
-          {p.stageText}
-        </p>
-        {p.estimate && <p className="hint">{p.estimate}</p>}
-      </div>
+      {p.estimate && <p className="hint">{p.estimate}</p>}
+      {p.progress}
+      <p className="visually-hidden" aria-live="polite">
+        {p.stageText}
+      </p>
     </Panel>
   );
 }

@@ -127,6 +127,15 @@ export const zh: Messages = {
   progressFinished: '完成',
   progressCancelled: '已停止',
   progressFailed: '任务失败：{reason}',
+  stopJob: '停止雕刻',
+  phaseUpload: '发送到雕刻机',
+  phaseBurn: '雕刻',
+  phaseWaiting: '等待中',
+  phaseDone: '完成',
+  elapsedRemaining: '已用 {elapsed}，约剩 {remaining}',
+  elapsed: '已用 {elapsed}',
+  finishedIn: '用时 {time} 完成',
+  uploadFirst: '图像先发送到雕刻机（约 {time}），然后开始雕刻。',
   safetyNote:
     '激光会损伤眼睛并可能引发火灾。请佩戴激光防护眼镜，切勿让机器无人看管，并确认电源开关的位置。',
 

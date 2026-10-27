@@ -23,9 +23,11 @@ export class NejeError extends Error {
 
 export type JobProgress =
   | { readonly stage: 'none' }
-  | { readonly stage: 'uploading'; readonly sent: number; readonly total: number }
-  | { readonly stage: 'burning'; readonly percent: number }
-  | { readonly stage: 'finished' }
+  /** Phase 1: the device receives the whole bitmap before it starts burning. */
+  | { readonly stage: 'uploading'; readonly sent: number; readonly total: number; readonly startedAt: number }
+  /** Phase 2: burning. `percent` is null until (unless) the device reports progress. */
+  | { readonly stage: 'burning'; readonly percent: number | null; readonly startedAt: number }
+  | { readonly stage: 'finished'; readonly durationMs: number }
   | { readonly stage: 'cancelled' }
   | { readonly stage: 'failed'; readonly code: NejeErrorCode };
 
@@ -176,14 +178,18 @@ export class NejeSession {
         this.update({ temperatureC: m.temperatureC, batteryPercent: m.batteryPercent });
         break;
       case 'progress':
-        // late progress reports after a stop must not revive the job
-        if (this.snapshot.job.stage !== 'cancelled') this.update({ job: { stage: 'burning', percent: m.percent }, machine: 'working' });
+        // Only meaningful while burning: during the upload the device reports how much it has
+        // received, which is already tracked (and used to make the bar flicker between phases).
+        // Late reports after a stop must not revive the job either.
+        if (this.snapshot.job.stage === 'burning') this.update({ job: { ...this.snapshot.job, percent: m.percent }, machine: 'working' });
         break;
       case 'event':
         if (m.event === 'finished') {
           // only a job that was actually running can finish; a cancel on an idle machine also says "finished"
           const { stage } = this.snapshot.job;
-          this.update({ machine: 'idle', job: stage === 'uploading' || stage === 'burning' ? { stage: 'finished' } : this.snapshot.job });
+          const job = this.snapshot.job;
+          const finished = { stage: 'finished', durationMs: 'startedAt' in job ? Date.now() - job.startedAt : 0 } as const;
+          this.update({ machine: 'idle', job: stage === 'uploading' || stage === 'burning' ? finished : job });
         }
         if (m.event === 'paused' || m.event === 'lowBattery') this.update({ machine: 'paused' });
         break;
@@ -423,12 +429,13 @@ export class NejeSession {
       throw error;
     }
     if (!reply.accepted) throw new NejeError('BUSY');
-    if (!signal.aborted) this.update({ machine: 'working', job: { stage: 'uploading', sent: 0, total: bitmap.length } });
+    const startedAt = Date.now();
+    if (!signal.aborted) this.update({ machine: 'working', job: { stage: 'uploading', sent: 0, total: bitmap.length, startedAt } });
     // Once accepted, the device consumes exactly `bitmap.length` bytes, so a stop cannot cut the
     // stream short: the rest is padded with zeros (no burn) and cancel follows in stop().
     const complete = await this.writeData(bitmap, signal);
     if (!complete) throw new NejeError('ABORTED');
-    if (this.snapshot.job.stage === 'uploading') this.update({ job: { stage: 'burning', percent: 0 } });
+    if (this.snapshot.job.stage === 'uploading') this.update({ job: { stage: 'burning', percent: null, startedAt: Date.now() } });
   }
 
   /** Streams raw data in chunks; after an abort the remainder is zero-filled. Returns false if aborted. */
@@ -442,7 +449,8 @@ export class NejeSession {
         await this.transport.write(aborted ? new Uint8Array(size) : data.subarray(sent, sent + size));
         sent += size;
         // re-check: stop() may have run while this chunk was being written
-        if (!silent && !aborted && !signal.aborted) this.update({ job: { stage: 'uploading', sent, total: data.length } });
+        const job = this.snapshot.job;
+        if (!silent && !aborted && !signal.aborted && job.stage === 'uploading') this.update({ job: { ...job, sent } });
       }
     } finally {
       this.streaming = false;

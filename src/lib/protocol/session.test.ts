@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { CAPTURED, SimulatorTransport, type SimulatorOptions } from '@/lib/transport/simulator';
 import { packBitmap } from './bitmap';
+import { buildFrame } from './frames';
 import { decodeMessage, FrameParser, fromHex } from './messages';
 import { NejeError, NejeSession, type SessionSnapshot } from './session';
 
@@ -62,6 +63,38 @@ describe('NejeSession', () => {
     expect(done.machine).toBe('idle');
     const payload = sim.received.filter((b) => !(b[0] === 0xff && b[1] === 0xaa)).reduce((n, b) => n + b.length, 0);
     expect(payload).toBe(650);
+  });
+
+  it('keeps the two phases apart: receive reports during the upload do not flip the stage', async () => {
+    const sim = new SimulatorTransport({ heartbeatMs: 1000, burnMs: 100 });
+    const write = sim.write.bind(sim);
+    sim.write = async (b) => {
+      // like the real device: progress reports while it is still receiving data
+      if (!(b[0] === 0xff && b[1] === 0xaa)) sim.emit(buildFrame(0x04, 1, [3, 50]));
+      await new Promise((r) => setTimeout(r, 2));
+      return write(b);
+    };
+    const session = new NejeSession(sim, { chunkSize: 64 });
+    sessions.push(session);
+    await session.connect();
+    const stages: string[] = [];
+    session.subscribe(() => {
+      const s = session.getSnapshot().job.stage;
+      if (s !== 'none' && stages.at(-1) !== s) stages.push(s);
+    });
+    await session.engrave({ x: 0, y: 0, width: 64, height: 16 }, new Uint8Array(128));
+    await until(session, (s) => s.job.stage === 'finished');
+    expect(stages).toEqual(['uploading', 'burning', 'finished']); // no uploading ↔ burning flicker
+    const done = session.getSnapshot().job;
+    expect(done.stage === 'finished' && done.durationMs).toBeGreaterThan(0);
+  });
+
+  it('starts the burn phase with unknown progress until the device reports it', async () => {
+    const { session } = setup({ burnMs: 2000 });
+    await session.connect();
+    await session.engrave({ x: 0, y: 0, width: 8, height: 1 }, new Uint8Array(1));
+    expect(session.getSnapshot().job).toMatchObject({ stage: 'burning', percent: null });
+    await until(session, (s) => s.job.stage === 'burning' && s.job.percent !== null);
   });
 
   it('rejects jobs outside the work area or with a wrong bitmap size', async () => {

@@ -127,6 +127,15 @@ export const cs: Messages = {
   progressFinished: 'Hotovo',
   progressCancelled: 'Zastaveno',
   progressFailed: 'Úloha selhala: {reason}',
+  stopJob: 'Zastavit',
+  phaseUpload: 'Odesílání do gravírky',
+  phaseBurn: 'Gravírování',
+  phaseWaiting: 'Čeká',
+  phaseDone: 'Hotovo',
+  elapsedRemaining: 'Uplynulo {elapsed}, zbývá asi {remaining}',
+  elapsed: 'Uplynulo {elapsed}',
+  finishedIn: 'Hotovo za {time}',
+  uploadFirst: 'Obrázek se nejdřív odešle do gravírky (asi {time}), pak začne gravírování.',
   safetyNote:
     'Laserové světlo poškozuje zrak a může způsobit požár. Noste ochranné brýle proti laseru, stroj nenechávejte bez dozoru a vězte, kde je jeho vypínač.',
 

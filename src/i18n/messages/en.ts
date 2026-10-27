@@ -126,6 +126,15 @@ export const en = {
   progressFinished: 'Done',
   progressCancelled: 'Stopped',
   progressFailed: 'Job failed: {reason}',
+  stopJob: 'Stop engraving',
+  phaseUpload: 'Sending to engraver',
+  phaseBurn: 'Engraving',
+  phaseWaiting: 'Waiting',
+  phaseDone: 'Done',
+  elapsedRemaining: '{elapsed} elapsed, about {remaining} left',
+  elapsed: '{elapsed} elapsed',
+  finishedIn: 'Done in {time}',
+  uploadFirst: 'The image is sent to the engraver first (about {time}), then engraving starts.',
   safetyNote:
     'Laser light damages eyes and can start fires. Wear laser safety goggles, never leave the machine unattended and know where its power switch is.',
 

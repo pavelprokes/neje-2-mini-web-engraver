@@ -127,6 +127,15 @@ export const fr: Messages = {
   progressFinished: 'Terminé',
   progressCancelled: 'Arrêté',
   progressFailed: 'Échec de la tâche : {reason}',
+  stopJob: 'Arrêter la gravure',
+  phaseUpload: 'Envoi au graveur',
+  phaseBurn: 'Gravure',
+  phaseWaiting: 'En attente',
+  phaseDone: 'Terminé',
+  elapsedRemaining: '{elapsed} écoulé, encore environ {remaining}',
+  elapsed: '{elapsed} écoulé',
+  finishedIn: 'Terminé en {time}',
+  uploadFirst: 'L’image est d’abord envoyée au graveur (environ {time}), puis la gravure commence.',
   safetyNote:
     'La lumière laser abîme les yeux et peut provoquer un incendie. Portez des lunettes de protection laser, ne laissez jamais la machine sans surveillance et sachez où se trouve son interrupteur.',
 
