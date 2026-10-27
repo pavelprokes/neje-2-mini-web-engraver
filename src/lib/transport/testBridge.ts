@@ -1,4 +1,4 @@
-import type { Bytes, Transport } from '@/lib/protocol';
+import { DEFAULT_LINE_BAUD, type Bytes, type Transport } from '@/lib/protocol';
 
 /**
  * Test seam for end-to-end tests against real hardware. Browsers do not let automation pick a
@@ -23,7 +23,7 @@ export const getTestBridge = (): NejeTestBridge | undefined => (typeof window ==
 
 export class BridgeTransport implements Transport {
   /** The Node side opens the real port at the default speed. */
-  readonly baudRate = 57_600;
+  readonly baudRate = DEFAULT_LINE_BAUD;
 
   constructor(private readonly bridge: NejeTestBridge) {}
 

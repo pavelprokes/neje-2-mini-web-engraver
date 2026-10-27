@@ -1,6 +1,6 @@
-import type { Bytes, Transport } from '@/lib/protocol';
+import { DEFAULT_LINE_BAUD, type Bytes, type Transport } from '@/lib/protocol';
 
-export const DEFAULT_BAUD_RATE = 57_600;
+export const DEFAULT_BAUD_RATE = DEFAULT_LINE_BAUD;
 
 export const isWebSerialSupported = (): boolean => typeof navigator !== 'undefined' && 'serial' in navigator;
 

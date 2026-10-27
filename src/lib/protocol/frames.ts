@@ -67,6 +67,12 @@ export function buildFrame(cmd: number, sub: number, payload: readonly number[] 
 /** Rows are bit-packed, so the device works with widths rounded up to whole bytes. */
 export const paddedWidth = (width: number): number => Math.ceil(width / 8) * 8;
 
+/** Speed the engraver talks at after the port opens (it offers faster rates; see PROTOCOL.md). */
+export const DEFAULT_LINE_BAUD = 57_600;
+
+/** Seconds to move `bytes` over the serial line: 8N1 framing puts 10 bits on the wire per byte. */
+export const transferSeconds = (bytes: number, baud: number = DEFAULT_LINE_BAUD): number => (bytes * 10) / baud;
+
 /** Bytes of bitmap payload the device expects for a job of the given size. */
 export const bitmapLength = (width: number, height: number): number => (paddedWidth(width) * height) / 8;
 

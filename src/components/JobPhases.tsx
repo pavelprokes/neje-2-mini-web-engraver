@@ -10,7 +10,7 @@ interface Props {
   readonly burnEstimateSeconds: number | null;
   /** Formats seconds as a short duration ("40 s", "3 min"). */
   readonly duration: (seconds: number) => string;
-  /** "Stopped" or "Job failed: …" for jobs that did not finish. */
+  /** "Stopped" or "Job failed: …", shown in the phase the job ended in. */
   readonly outcome: string | null;
 }
 
@@ -28,8 +28,13 @@ function useNow(active: boolean): number {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     if (!active) return;
+    // refresh right away: the component lives all session, so `now` may be hours old here
+    const first = setTimeout(() => setNow(Date.now()), 0);
     const timer = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(timer);
+    return () => {
+      clearTimeout(first);
+      clearInterval(timer);
+    };
   }, [active]);
   return now;
 }
@@ -61,11 +66,11 @@ export function JobPhases({ job, burnEstimateSeconds, duration, outcome }: Props
       };
     }
     if (job.stage === 'burning' || job.stage === 'finished') return { state: 'done', value: 100, text: t('phaseDone'), detail: null };
-    // a stopped or failed job keeps showing how far it got
-    if ((job.stage === 'cancelled' || job.stage === 'failed') && job.reached !== 'none')
-      return job.reached === 'burning'
-        ? { state: 'done', value: 100, text: t('phaseDone'), detail: null }
-        : { state: 'stopped', value: 0, text: outcome ?? '', detail: null };
+    // a stopped or failed job keeps showing how far it got; one that never started is marked here
+    if (job.stage === 'cancelled' || job.stage === 'failed') {
+      if (job.reached.phase === 'burning') return { state: 'done', value: 100, text: t('phaseDone'), detail: null };
+      return { state: 'stopped', value: job.reached.percent ?? 0, text: outcome ?? '', detail: null };
+    }
     return { state: 'pending', value: 0, text: t('phaseWaiting'), detail: null };
   })();
 
@@ -92,7 +97,8 @@ export function JobPhases({ job, burnEstimateSeconds, duration, outcome }: Props
     }
     if (job.stage === 'finished')
       return { state: 'done', value: 100, text: t('phaseDone'), detail: t('finishedAt', { time: formatTime(job.finishedAt), duration: clock(job.durationMs) }) };
-    if ((job.stage === 'cancelled' || job.stage === 'failed') && job.reached === 'burning') return { state: 'stopped', value: 0, text: outcome ?? '', detail: null };
+    if ((job.stage === 'cancelled' || job.stage === 'failed') && job.reached.phase === 'burning')
+      return { state: 'stopped', value: job.reached.percent ?? 0, text: outcome ?? '', detail: null };
     return { state: 'pending', value: 0, text: t('phaseWaiting'), detail: null };
   })();
 
@@ -118,7 +124,6 @@ export function JobPhases({ job, burnEstimateSeconds, duration, outcome }: Props
           </li>
         ))}
       </ol>
-      {outcome && <p className="hint">{outcome}</p>}
     </div>
   );
 }
