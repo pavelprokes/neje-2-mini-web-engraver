@@ -1,10 +1,14 @@
 'use client';
 
-import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent, type PointerEvent } from 'react';
 import { useI18n } from '@/i18n/I18nProvider';
 import type { Raster } from '@/lib/imaging/raster';
 import { mmToPx, pxToMm, type WorkArea as Area } from '@/lib/job';
+import { computeDimensions } from '@/lib/dimensions';
 import type { Rect } from '@/lib/protocol';
+import { dimensionsVisible } from '@/lib/storage';
+import { DimensionsTable } from './DimensionsTable';
+import { drawDimensions } from './drawDimensions';
 
 interface Props {
   readonly area: Area;
@@ -55,6 +59,9 @@ export function WorkArea({ area, raster, highlight, trace, head, onMove, onNudge
   const [announcement, setAnnouncement] = useState('');
   const dots = useDotImage(raster);
   const scale = Math.min(1, MAX_CANVAS_HEIGHT / area.height);
+  const showDimensions = useSyncExternalStore(dimensionsVisible.subscribe, dimensionsVisible.getSnapshot, dimensionsVisible.getServerSnapshot);
+  const dimensions = useMemo(() => computeDimensions(area, raster?.rect ?? null, head), [area, raster, head]);
+  const mm = (px: number) => formatNumber(pxToMm(px, area));
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -100,6 +107,12 @@ export function WorkArea({ area, raster, highlight, trace, head, onMove, onNudge
       ctx.strokeRect(trace.x, trace.y, trace.width, trace.height);
     }
 
+    if (showDimensions) {
+      // labels scale with the on-screen canvas size so text stays the same size in CSS pixels
+      const shown = canvas.getBoundingClientRect().width || area.width * scale;
+      drawDimensions(ctx, area, raster?.rect ?? null, head, dimensions, { unit: area.width / shown, label: (px) => `${mm(px)} mm` });
+    }
+
     if (head) {
       const r = 14 / scale;
       ctx.setLineDash([]);
@@ -115,7 +128,8 @@ export function WorkArea({ area, raster, highlight, trace, head, onMove, onNudge
       ctx.arc(head.x, head.y, r / 2, 0, Math.PI * 2);
       ctx.stroke();
     }
-  }, [area, scale, raster, dots, highlight, trace, head]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- `mm` only depends on area and locale
+  }, [area, scale, raster, dots, highlight, trace, head, showDimensions, dimensions, formatNumber]);
 
   const toDevice = (clientDelta: number) => {
     const shown = canvasRef.current?.getBoundingClientRect().width || 1;
@@ -160,7 +174,6 @@ export function WorkArea({ area, raster, highlight, trace, head, onMove, onNudge
     setKeyboardMoved((n) => n + 1);
   };
 
-  const mm = (px: number) => formatNumber(pxToMm(px, area));
   const size = { width: mm(area.width), height: mm(area.height) };
   const description = raster
     ? t('workAreaDescription', { ...size, x: mm(raster.rect.x), y: mm(raster.rect.y), w: mm(raster.rect.width), h: mm(raster.rect.height) })
@@ -183,6 +196,9 @@ export function WorkArea({ area, raster, highlight, trace, head, onMove, onNudge
       <div className="row" style={{ marginTop: 0, marginBottom: '0.5rem', alignItems: 'center' }}>
         <button type="button" aria-pressed={headMode} disabled={!canMoveHead} aria-describedby={headHintId} onClick={() => setHeadMode((on) => !on)}>
           {t('clickToMove')}
+        </button>
+        <button type="button" aria-pressed={showDimensions} onClick={() => dimensionsVisible.set(!showDimensions)}>
+          {t('showDimensions')}
         </button>
         <span id={headHintId} className="hint" style={{ margin: 0 }}>
           {t('clickToMoveHint')}
@@ -217,6 +233,7 @@ export function WorkArea({ area, raster, highlight, trace, head, onMove, onNudge
           )}
         </div>
       )}
+      {showDimensions && <DimensionsTable dimensions={dimensions} mm={mm} />}
       <figcaption>
         <span>{t('workAreaCaption', size)}</span>
         <span id={descriptionId} className="visually-hidden">

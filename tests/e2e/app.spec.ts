@@ -48,6 +48,9 @@ test.describe('accessibility (WCAG 2.2 AA, axe)', () => {
       await loadImage(page);
       await page.getByText('Advanced').click();
       await page.getByLabel('Show serial traffic').check();
+      await page.getByRole('button', { name: 'Go home' }).first().click();
+      await page.getByRole('button', { name: 'Show dimensions' }).click();
+      await page.getByRole('button', { name: 'Move head by clicking' }).click();
       await expectAccessible(page);
       await page.getByRole('button', { name: 'Start engraving…' }).click();
       await expect(page.getByRole('dialog', { name: 'Start engraving?' })).toBeVisible();
@@ -209,6 +212,34 @@ test.describe('engraving with the simulator', () => {
     await expect(page.getByText('Head at X 56 mm, Y 40 mm')).toBeVisible();
     await toggle.click();
     await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  test('dimensions show image and head distances, also as text', async ({ page }) => {
+    await connectSimulator(page);
+    await page.getByRole('button', { name: 'Go home' }).first().click();
+    await loadImage(page); // 2:1 image → 40 × 20 mm
+    await page.getByLabel('X from left (mm)').fill('10');
+    await page.getByLabel('Y from top (mm)').fill('5');
+    const toggle = page.getByRole('button', { name: 'Show dimensions' });
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+
+    const table = page.getByRole('region', { name: 'Dimensions' });
+    const value = (group: string, label: string) =>
+      table.locator('div', { has: page.getByText(group, { exact: true }) }).locator('dl > div', { has: page.getByText(label, { exact: true }) }).locator('dd');
+    await expect(value('Image', 'Size')).toHaveText('40 × 20 mm');
+    await expect(value('Image', 'From left edge')).toHaveText('10 mm');
+    await expect(value('Image', 'From right edge')).toHaveText('60 mm'); // 110 − 10 − 40
+    await expect(value('Image', 'From bottom edge')).toHaveText('95 mm'); // 120 − 5 − 20
+    await expect(value('Head', 'From left edge')).toHaveText('0 mm');
+    await expect(value('Head', 'From right edge')).toHaveText('110 mm');
+    await expect(value('Head to image corner', 'Horizontal (X)')).toHaveText('-10 mm');
+    await expect(value('Head to image corner', 'Vertical (Y)')).toHaveText('-5 mm');
+
+    await page.getByRole('button', { name: 'Move head to image' }).click();
+    await expect(value('Head to image corner', 'Horizontal (X)')).toHaveText('0 mm');
+    await toggle.click();
+    await expect(table).toBeHidden();
   });
 
   test('user presets are saved and applied', async ({ page }) => {
