@@ -1,0 +1,42 @@
+{
+  "name": "neje-2-mini-web-engraver",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Browser-based controller for NEJE Master 2 laser engravers over Web Serial. Works offline.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "preview": "serve out -l 4173",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test --project=chromium",
+    "test:hardware": "playwright test --project=hardware",
+    "check": "npm run typecheck && npm run lint && npm run test && npm run build && npm run test:e2e"
+  },
+  "dependencies": {
+    "next": "^16.4.3",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "@playwright/test": "^1.64.1",
+    "@types/node": "^26.6.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@types/w3c-web-serial": "^1.0.9",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.4.3",
+    "serialport": "^13.0.0",
+    "serve": "^14.2.6",
+    "typescript": "^6.0.3",
+    "vitest": "^5.0.5"
+  }
+}
