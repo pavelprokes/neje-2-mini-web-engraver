@@ -120,8 +120,6 @@ export const es: Messages = {
   durationSeconds: '{n} s',
   durationMinutes: '{n} min',
   durationHours: '{h} h {m} min',
-  progressLabel: 'Progreso del trabajo',
-  progressNone: 'Ningún trabajo en curso',
   progressUploading: 'Enviando datos {percent} %',
   progressBurning: 'Grabando {percent} %',
   progressFinished: 'Terminado',
@@ -134,7 +132,8 @@ export const es: Messages = {
   phaseDone: 'Hecho',
   elapsedRemaining: '{elapsed} transcurrido, quedan unos {remaining}',
   elapsed: '{elapsed} transcurrido',
-  finishedIn: 'Terminado en {time}',
+  finishesAround: 'terminará hacia las {time}',
+  finishedAt: 'Terminado a las {time}, duró {duration}',
   uploadFirst: 'Primero se envía la imagen al grabador (unos {time}) y luego empieza el grabado.',
   safetyNote:
     'La luz láser daña los ojos y puede provocar incendios. Use gafas de protección láser, no deje nunca la máquina desatendida y sepa dónde está su interruptor de alimentación.',

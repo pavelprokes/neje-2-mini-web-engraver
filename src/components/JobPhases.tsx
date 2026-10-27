@@ -34,14 +34,14 @@ function useNow(active: boolean): number {
   return now;
 }
 
-type PhaseState = 'pending' | 'active' | 'done';
+type PhaseState = 'pending' | 'active' | 'done' | 'stopped';
 
 /**
  * Two-step job progress. The device first receives the whole image and only then burns, so each
  * phase gets its own bar; the burn bar is indeterminate while the device reports no progress.
  */
 export function JobPhases({ job, burnEstimateSeconds, duration, outcome }: Props) {
-  const { t } = useI18n();
+  const { t, formatTime } = useI18n();
   const active = job.stage === 'uploading' || job.stage === 'burning';
   const now = useNow(active);
   if (job.stage === 'none') return null;
@@ -61,12 +61,18 @@ export function JobPhases({ job, burnEstimateSeconds, duration, outcome }: Props
       };
     }
     if (job.stage === 'burning' || job.stage === 'finished') return { state: 'done', value: 100, text: t('phaseDone'), detail: null };
+    // a stopped or failed job keeps showing how far it got
+    if ((job.stage === 'cancelled' || job.stage === 'failed') && job.reached !== 'none')
+      return job.reached === 'burning'
+        ? { state: 'done', value: 100, text: t('phaseDone'), detail: null }
+        : { state: 'stopped', value: 0, text: outcome ?? '', detail: null };
     return { state: 'pending', value: 0, text: t('phaseWaiting'), detail: null };
   })();
 
   const burn: { state: PhaseState; value: number | undefined; text: string; detail: string | null } = (() => {
     if (job.stage === 'burning') {
-      const elapsed = Math.max(0, now - job.startedAt);
+      // prefer the device's own burn clock; fall back to the host clock
+      const elapsed = job.elapsedSeconds !== null ? job.elapsedSeconds * 1000 : Math.max(0, now - job.startedAt);
       const percent = job.percent;
       const remaining =
         elapsed < 1000
@@ -76,14 +82,17 @@ export function JobPhases({ job, burnEstimateSeconds, duration, outcome }: Props
           : burnEstimateSeconds !== null
             ? Math.max(0, burnEstimateSeconds - elapsed / 1000)
             : null;
+      const timing = remaining === null ? t('elapsed', { elapsed: clock(elapsed) }) : t('elapsedRemaining', { elapsed: clock(elapsed), remaining: duration(remaining) });
       return {
         state: 'active',
         value: percent ?? undefined, // undefined = indeterminate bar
         text: percent === null ? t('statusWorking') : t('progressBurning', { percent }),
-        detail: remaining === null ? t('elapsed', { elapsed: clock(elapsed) }) : t('elapsedRemaining', { elapsed: clock(elapsed), remaining: duration(remaining) }),
+        detail: remaining === null ? timing : `${timing}, ${t('finishesAround', { time: formatTime(now + remaining * 1000) })}`,
       };
     }
-    if (job.stage === 'finished') return { state: 'done', value: 100, text: t('phaseDone'), detail: t('finishedIn', { time: clock(job.durationMs) }) };
+    if (job.stage === 'finished')
+      return { state: 'done', value: 100, text: t('phaseDone'), detail: t('finishedAt', { time: formatTime(job.finishedAt), duration: clock(job.durationMs) }) };
+    if ((job.stage === 'cancelled' || job.stage === 'failed') && job.reached === 'burning') return { state: 'stopped', value: 0, text: outcome ?? '', detail: null };
     return { state: 'pending', value: 0, text: t('phaseWaiting'), detail: null };
   })();
 
@@ -99,7 +108,7 @@ export function JobPhases({ job, burnEstimateSeconds, duration, outcome }: Props
           <li key={label} data-state={phase.state}>
             <div className="phase-head">
               <span className="phase-num" aria-hidden="true">
-                {phase.state === 'done' ? '✓' : i + 1}
+                {phase.state === 'done' ? '✓' : phase.state === 'stopped' ? '×' : i + 1}
               </span>
               <span className="phase-label">{t(label)}</span>
               <span className="phase-status">{phase.text}</span>

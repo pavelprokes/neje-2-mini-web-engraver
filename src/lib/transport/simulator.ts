@@ -24,6 +24,7 @@ export class SimulatorTransport implements Transport {
   private readonly heartbeat: ReturnType<typeof setInterval>;
   private burnTimer: ReturnType<typeof setInterval> | undefined;
   private expectedBytes = 0;
+  private jobBytes = 1;
   private paused = false;
   private closed = false;
   /** Everything written to the device, for assertions. */
@@ -43,6 +44,8 @@ export class SimulatorTransport implements Transport {
     this.received.push(data.slice());
     if (this.expectedBytes > 0) {
       this.expectedBytes -= data.length;
+      // like the hardware: receive progress while the image comes in
+      this.reply(buildFrame(0x04, 1, [3, Math.round(((this.jobBytes - Math.max(0, this.expectedBytes)) / this.jobBytes) * 100)]));
       if (this.expectedBytes <= 0) {
         this.reply(buildFrame(0x04, 1, [4, 1]));
         this.startBurn();
@@ -94,6 +97,7 @@ export class SimulatorTransport implements Transport {
           break;
         }
         this.expectedBytes = ((f[15]! << 24) | (f[16]! << 16) | (f[17]! << 8) | f[18]!) >>> 0;
+        this.jobBytes = this.expectedBytes;
         this.reply(buildFrame(0x04, 1, [2, 1]));
         break;
       }
@@ -119,7 +123,9 @@ export class SimulatorTransport implements Transport {
       () => {
         if (this.paused) return;
         step++;
-        this.reply(buildFrame(0x04, 1, [3, (step * 100) / steps]));
+        // same format as the hardware: percent, seconds, job-relative x and row
+        const percent = (step * 100) / steps;
+        this.reply(buildFrame(0x0d, 2, [0x25, percent, 0, step, 0, 0, 0, step]));
         if (step === steps) {
           clearInterval(this.burnTimer);
           this.reply(buildFrame(0x0c, 1, [1, 0]));

@@ -120,8 +120,6 @@ export const fr: Messages = {
   durationSeconds: '{n} s',
   durationMinutes: '{n} min',
   durationHours: '{h} h {m} min',
-  progressLabel: 'Progression de la tâche',
-  progressNone: 'Aucune tâche en cours',
   progressUploading: 'Envoi des données {percent} %',
   progressBurning: 'Gravure {percent} %',
   progressFinished: 'Terminé',
@@ -134,7 +132,8 @@ export const fr: Messages = {
   phaseDone: 'Terminé',
   elapsedRemaining: '{elapsed} écoulé, encore environ {remaining}',
   elapsed: '{elapsed} écoulé',
-  finishedIn: 'Terminé en {time}',
+  finishesAround: 'fin prévue vers {time}',
+  finishedAt: 'Terminé à {time}, durée {duration}',
   uploadFirst: 'L’image est d’abord envoyée au graveur (environ {time}), puis la gravure commence.',
   safetyNote:
     'La lumière laser abîme les yeux et peut provoquer un incendie. Portez des lunettes de protection laser, ne laissez jamais la machine sans surveillance et sachez où se trouve son interrupteur.',

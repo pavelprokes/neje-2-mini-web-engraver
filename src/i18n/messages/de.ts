@@ -120,8 +120,6 @@ export const de: Messages = {
   durationSeconds: '{n} s',
   durationMinutes: '{n} min',
   durationHours: '{h} h {m} min',
-  progressLabel: 'Auftragsfortschritt',
-  progressNone: 'Kein Auftrag aktiv',
   progressUploading: 'Daten werden gesendet {percent} %',
   progressBurning: 'Graviere {percent} %',
   progressFinished: 'Fertig',
@@ -134,7 +132,8 @@ export const de: Messages = {
   phaseDone: 'Fertig',
   elapsedRemaining: '{elapsed} vergangen, noch etwa {remaining}',
   elapsed: '{elapsed} vergangen',
-  finishedIn: 'Fertig in {time}',
+  finishesAround: 'fertig gegen {time}',
+  finishedAt: 'Fertig um {time}, Dauer {duration}',
   uploadFirst: 'Das Bild wird zuerst an das Gerät übertragen (etwa {time}), dann beginnt das Gravieren.',
   safetyNote:
     'Laserlicht schädigt die Augen und kann Brände verursachen. Tragen Sie eine Laserschutzbrille, lassen Sie das Gerät nie unbeaufsichtigt und wissen Sie, wo sich sein Netzschalter befindet.',

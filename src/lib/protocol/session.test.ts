@@ -89,6 +89,46 @@ describe('NejeSession', () => {
     expect(done.stage === 'finished' && done.durationMs).toBeGreaterThan(0);
   });
 
+  it('counts the upload as done only when the device confirms receipt, refusing commands until then', async () => {
+    let deliver: (b: Uint8Array) => void = () => {};
+    const written: Uint8Array[] = [];
+    const device = {
+      baudRate: 1_000_000, // keeps the receive timeout short
+      open: (onData: (b: Uint8Array) => void) => (deliver = onData),
+      async write(b: Uint8Array) {
+        written.push(b.slice());
+        if (b[3] === 0x01) queueMicrotask(() => deliver(CAPTURED.info));
+        if (b[3] === 0x04) queueMicrotask(() => deliver(fromHex('ff aa 08 04 01 02 01 55'))); // accepted
+      },
+      async close() {},
+    };
+    const session = new NejeSession(device);
+    sessions.push(session);
+    await session.connect();
+    // the host hands all data to the OS at once; the device still has to receive it
+    const upload = session.engrave({ x: 0, y: 0, width: 64, height: 8 }, new Uint8Array(64));
+    await until(session, (s) => s.job.stage === 'uploading');
+    await new Promise((r) => setTimeout(r, 5));
+    expect(session.getSnapshot().job.stage).toBe('uploading');
+    await expect(session.setLaserParams({ power: 10 })).rejects.toMatchObject({ code: 'BUSY' }); // the hardware bug
+    deliver(fromHex('ff aa 08 04 01 03 5d 55')); // 93 %
+    expect(session.getSnapshot().job).toMatchObject({ stage: 'uploading', sent: 60 });
+    deliver(fromHex('ff aa 08 04 01 03 64 55')); // 100 % received
+    await upload;
+    expect(session.getSnapshot().job).toMatchObject({ stage: 'burning', percent: null });
+    expect(written.filter((b) => b[0] === 0xff && b[1] === 0xaa && b[3] === 0x03)).toEqual([]); // nothing slipped in
+  });
+
+  it('follows burn reports: percent, device seconds and the live head position', async () => {
+    const { sim, session } = setup({ burnMs: 60_000 });
+    await session.connect();
+    await session.engrave({ x: 100, y: 200, width: 72, height: 67 }, new Uint8Array(603));
+    sim.emit(fromHex('ff aa 0e 0d 02 25 36 00 0c 00 42 00 25 55')); // captured on hardware
+    await until(session, (s) => s.job.stage === 'burning' && s.job.percent === 54);
+    expect(session.getSnapshot().job).toMatchObject({ elapsedSeconds: 12 });
+    expect(session.getSnapshot().head).toEqual({ x: 166, y: 237 }); // job origin + job-relative position
+  });
+
   it('starts the burn phase with unknown progress until the device reports it', async () => {
     const { session } = setup({ burnMs: 2000 });
     await session.connect();
@@ -108,7 +148,7 @@ describe('NejeSession', () => {
     const { session } = setup({ busy: true });
     await session.connect();
     await expect(session.engrave({ x: 0, y: 0, width: 8, height: 1 }, new Uint8Array(1))).rejects.toMatchObject({ code: 'BUSY' });
-    expect(session.getSnapshot().job).toEqual({ stage: 'failed', code: 'BUSY' });
+    expect(session.getSnapshot().job).toEqual({ stage: 'failed', code: 'BUSY', reached: 'none' });
   });
 
   it('stops mid-upload by zero-padding the bitmap before cancelling', async () => {

@@ -9,46 +9,17 @@
  * preview/trace frame, raw bitmap data). Only identification, parameters, pause/resume/cancel
  * and head moves reach the machine.
  */
-import { expect, test, type Page } from '@playwright/test';
-import { SerialPort } from 'serialport';
+import { expect, test } from '@playwright/test';
+import { attachBridge, isAllowed, type Sent } from './bridge';
 
 const PORT = process.env.NEJE_PORT;
 test.skip(!PORT, 'set NEJE_PORT to the engraver serial port to run hardware tests');
 test.describe.configure({ mode: 'serial' });
 
-type Sent = number[];
-
-function isAllowed(frame: Sent): boolean {
-  if (frame[0] !== 0xff || frame[1] !== 0xaa) return false; // raw data = bitmap
-  const cmd = frame[3];
-  if (cmd === 0x04) return false; // start job
-  if (cmd === 0x05 && frame[6] !== 1 && frame[6] !== 0) return false; // preview/trace on (2)
-  return true;
-}
-
-async function attachBridge(page: Page, sent: Sent[]) {
-  const port = new SerialPort({ path: PORT!, baudRate: 57_600, autoOpen: false });
-  await new Promise<void>((resolve, reject) => port.open((e) => (e ? reject(e) : resolve())));
-  port.on('data', (chunk: Buffer) => {
-    void page.evaluate((bytes) => window.__NEJE_TEST_BRIDGE__?.onData?.(bytes), [...chunk]).catch(() => undefined);
-  });
-  await page.exposeFunction('__nejeBridgeWrite', async (bytes: number[]) => {
-    if (!isAllowed(bytes)) throw new Error(`blocked unsafe frame ${bytes.slice(0, 8).map((b) => b.toString(16)).join(' ')}`);
-    sent.push(bytes);
-    await new Promise<void>((resolve, reject) => port.write(Buffer.from(bytes), (e) => (e ? reject(e) : port.drain(() => resolve()))));
-  });
-  await page.exposeFunction('__nejeBridgeClose', async () => undefined);
-  await page.addInitScript(() => {
-    const w = window as unknown as Record<string, (...a: unknown[]) => Promise<void>>;
-    window.__NEJE_TEST_BRIDGE__ = { write: (b) => w.__nejeBridgeWrite!(b), close: () => w.__nejeBridgeClose!() };
-  });
-  return () => new Promise<void>((resolve) => (port.isOpen ? port.close(() => resolve()) : resolve()));
-}
-
 test('identifies, homes, reconnects and runs the motion test on a real engraver', async ({ page }) => {
   test.setTimeout(60_000);
   const sent: Sent[] = [];
-  const closePort = await attachBridge(page, sent);
+  const { close: closePort } = await attachBridge(page, PORT!, { sent });
   try {
     await page.goto('/');
     const status = page.getByRole('status', { name: 'Engraver status' });
@@ -83,9 +54,13 @@ test('identifies, homes, reconnects and runs the motion test on a real engraver'
     await expect(page.getByRole('button', { name: 'Testing motion…' })).toBeDisabled();
     await expect(page.getByRole('button', { name: 'Test motion' })).toBeEnabled({ timeout: 10_000 });
 
-    // laser parameters reach the device
-    await page.getByLabel('Power').fill('30');
-    await expect.poll(() => sent.some((f) => f[3] === 0x03 && f[6] === 30), { timeout: 3_000 }).toBe(true);
+    // laser parameters reach the device; the engraver stores them, so put the original back
+    const original = await page.getByLabel('Power').inputValue();
+    const probe = original === '30' ? '31' : '30';
+    await page.getByLabel('Power').fill(probe);
+    await expect.poll(() => sent.some((f) => f[3] === 0x03 && f[6] === Number(probe)), { timeout: 3_000 }).toBe(true);
+    await page.getByLabel('Power').fill(original);
+    await expect.poll(() => sent.at(-1)?.[3] === 0x03 && sent.at(-1)?.[6] === Number(original), { timeout: 3_000 }).toBe(true);
 
     await page.getByRole('button', { name: 'Disconnect' }).click();
     await expect(status).toHaveText('Not connected');

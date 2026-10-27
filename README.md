@@ -52,7 +52,8 @@ works offline. Built and tested with a **NEJE Master 2 Mini**.
 |---|---|
 | Connect, identify, telemetry, reconnect, homing, head moves | ✅ verified on a Master 2 Mini (automated hardware test) |
 | Laser parameters | Sent to hardware without error; effect on burns not yet measured |
-| Job upload, trace frame, pause/resume, cancel | Implemented to the protocol observed in the vendor app, covered by simulator tests, **not yet burned on hardware** |
+| Job upload and burn, trace frame, cancel | ✅ verified with a real calibration burn (traffic captured, see docs/PROTOCOL.md) |
+| Pause/resume | Implemented to the vendor protocol, covered by simulator tests, not yet tried on hardware |
 | Odd-row bit order | Two variants selectable (*Advanced*) until a calibration burn decides |
 | Older KZ / BL / Master 1 boards (4-byte protocol) | Not supported |
 

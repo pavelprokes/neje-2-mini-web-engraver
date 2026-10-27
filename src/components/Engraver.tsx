@@ -142,7 +142,8 @@ export function Engraver() {
   const jobActive = connected && (snapshot?.machine !== 'idle' || job.stage === 'uploading');
   // parameters only go out while the machine is idle; a job carries its own
   useDebouncedEffect(connected && !jobActive && !motionTesting ? `${settings.power}/${settings.burnTimeMs}` : null, 300, (key) => {
-    if (key) void run((s) => s.setLaserParams({ power: settings.power, burnTimeMs: settings.burnTimeMs }));
+    // re-check at fire time: a job may have started since (it carries its own parameters)
+    if (key) void run((s) => (s.isBusy() ? Promise.resolve() : s.setLaserParams({ power: settings.power, burnTimeMs: settings.burnTimeMs })));
   });
   // trace only what will burn; fall back to the full image box for blank images
   const traceRect = useMemo(() => (raster ? fitPadded(raster.burnBounds ?? raster.rect, area) : null), [raster, area]);
@@ -231,7 +232,7 @@ export function Engraver() {
   const burnSeconds = raster ? estimateSeconds(raster.burnedDots, settings.burnTimeMs) : null;
   const estimate = burnSeconds !== null ? t('estimate', { time: duration(burnSeconds) }) : null;
   // 8N1 framing: 10 bits on the wire per byte
-  const uploadSeconds = raster ? (bitmapLength(raster.rect.width, raster.rect.height) * 10) / DEFAULT_BAUD_RATE : null;
+  const uploadSeconds = raster && device.kind !== 'simulator' ? (bitmapLength(raster.rect.width, raster.rect.height) * 10) / DEFAULT_BAUD_RATE : null;
 
   const outcome =
     job.stage === 'cancelled' ? t('progressCancelled') : job.stage === 'failed' ? t('progressFailed', { reason: t(errorKeyFor(job.code)) }) : null;
@@ -342,10 +343,11 @@ export function Engraver() {
             stageText={stageText}
             paused={snapshot?.machine === 'paused'}
             previewing={!!snapshot?.previewing}
+            canStopTrace={connected && !motionTesting && job.stage !== 'uploading'}
             estimate={estimate}
             progress={<JobPhases job={job} burnEstimateSeconds={burnSeconds} duration={duration} outcome={outcome} />}
             onStop={stop}
-            onTrace={() => traceRect && void run((s) => (s.getSnapshot().previewing ? s.previewOff() : s.previewOn(traceRect)))}
+            onTrace={() => void run((s) => (s.getSnapshot().previewing ? s.previewOff() : traceRect ? s.previewOn(traceRect) : Promise.resolve()))}
             onPauseResume={() => void run((s) => (s.getSnapshot().machine === 'paused' ? s.resume() : s.pause()))}
             onStart={() => setConfirming(true)}
           />

@@ -37,6 +37,8 @@ interface I18n {
   t(key: MessageKey, vars?: Vars): string;
   formatNumber(value: number, maximumFractionDigits?: number): string;
   formatDate(timestamp: number): string;
+  /** Clock time, e.g. 22:41. */
+  formatTime(timestamp: number): string;
 }
 
 const I18nContext = createContext<I18n | null>(null);
@@ -65,6 +67,7 @@ export function I18nProvider({ children }: { readonly children: ReactNode }) {
     const messages = MESSAGES[locale];
     const numbers = new Map<number, Intl.NumberFormat>();
     const dates = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' });
+    const times = new Intl.DateTimeFormat(locale, { timeStyle: 'short' });
     return {
       locale,
       preference,
@@ -76,6 +79,7 @@ export function I18nProvider({ children }: { readonly children: ReactNode }) {
         return f.format(n);
       },
       formatDate: (ts) => dates.format(ts),
+      formatTime: (ts) => times.format(ts),
     };
   }, [locale, preference, setPreference]);
 

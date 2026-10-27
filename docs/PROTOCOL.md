@@ -37,12 +37,12 @@ parsers must resynchronise on `FF AA` and validate the trailer.
 | Purpose | Frame | |
 |---|---|---|
 | Identify | `FF AA 08 01 01 5A A5 55` | ✅ |
-| Set laser parameters | `FF AA 0B 03 01 <time> <power> <level> <sensitivity> <mode> 55` | 🔍 sent to hardware without error, effect not measured |
+| Set laser parameters | `FF AA 0B 03 01 <time> <power> <level> <sensitivity> <mode> 55` | ✅ echoed back and **stored across power cycles** |
 | Pause / resume / cancel | `FF AA 08 02 01 01 <00 \| 01 \| 02> 55` | 🔍 |
 | Move head to (x, y) | `FF AA 10 05 01 50 01 <x BE16> <y BE16> FF FF FF FF 55` | ✅ head moves, no reply |
-| Trace frame (pointer laser on) | `FF AA 10 05 01 50 02 <x> <y> <w₈> <h> 55` | 🔍 |
+| Trace frame (pointer laser on) | `FF AA 10 05 01 50 02 <x> <y> <w₈> <h> 55` | ✅ head traces the frame |
 | Trace off | `FF AA 10 05 01 50 00 FF×8 55` | 🔍 |
-| Start job | `FF AA 14 04 01 01 50 <x> <y> <w₈> <h> <bytes BE32> 55` | 🔍 |
+| Start job | `FF AA 14 04 01 01 50 <x> <y> <w₈> <h> <bytes BE32> 55` | ✅ |
 
 - Coordinates are device pixels from the top-left; the pixel pitch is reported by the device (75 µm).
 - Moves are absolute and get no reply ✅, and the device never reports the head position outside a job.
@@ -54,33 +54,45 @@ parsers must resynchronise on `FF AA` and validate the trailer.
 - `level`, `sensitivity` and `mode` are device settings (idle pointer brightness, motion-detection
   sensitivity, speed mode). This app keeps whatever the device reports.
 
-### Job upload 🔍
+### Job flow ✅ (verified with a real burn on a Master 2 Mini, fw 7)
 
-1. Send *start job*.
-2. Wait for *job accepted* (`04 02`). `01` means go, anything else means busy.
-3. Stream exactly `bytes` of bitmap data with no framing, in 2 KiB chunks.
-   - Rows are bit-packed with 1 meaning burn. Even rows are MSB-first.
-   - Odd rows are reversed (serpentine scan). The vendor app's odd-row bit table is
-     `01 02 04 08 10 10 20 40`, which looks like a typo of the exact mirror `… 20 40 80`. This app
-     defaults to the exact mirror and offers the vendor order under *Advanced* until a calibration burn settles it ❓.
-4. The device reports *transfer complete*, then progress, then *finished*.
+Captured sequence, times in ms after *start job*:
 
-While the device is receiving bitmap data, every byte is image data, so a command sent mid-stream
-would be read as pixels ❓. This app therefore stops an upload by padding the rest with zeros (no burn)
-and only then sends *cancel*.
+```
+   0  → FF AA 14 04 01 01 50 <x> <y> <w₈> <h> <bytes>   start job (x=133 y=133 w₈=72 h=67, 603 bytes)
+  13  ← FF AA 08 04 01 02 01 55                          job accepted
+      → 603 bytes of bitmap, no framing
+ 115  ← FF AA 08 04 01 03 57 55                          receive progress 87 %
+ 131  ← FF AA 08 04 01 04 01 55                          transfer complete
+ 145  ← FF AA 10 02 01 01 50 <x> <y> <w₈> <h> 55          status: working (b6 0x50) + job rectangle
+ 400… ← FF AA 0E 0D 02 25 <pp> 00 <ss> 00 <xx> 00 <yy> 55  burn progress, about 1 Hz (see below)
+19640 ← FF AA 08 0C 01 01 00 55                          finished
+      ← FF AA 10 02 01 01 00 <x> <y> <w₈> <h> 55          status: idle
+```
+
+1. The device **first receives the whole bitmap, then burns**. Bitmap rows are bit-packed with
+   1 meaning burn. Even rows are MSB-first. Odd rows are reversed (serpentine): see *Advanced* for
+   the two bit orders until a calibration burn settles it ❓.
+2. While receiving, the device reports *receive progress* (`04 03 <pp>`) and finally
+   *transfer complete* (`04 04 01`) ✅. Host writes complete much earlier, because the OS and the
+   USB bridge buffer the data. **No command may be sent until the device confirms receipt** ✅:
+   a parameters frame sent during the transfer left the job hanging at "received 100 %" with no
+   burn (observed, recovered with *cancel*).
+3. A stop during the transfer is done by padding the rest with zeros (no burn), then *cancel*.
 
 ## Device → host
 
 | `cmd` | Meaning | Layout | |
 |---|---|---|---|
 | `01` | Info | model `b5`, firmware `b7`, width `b8–9`, height `b10–11`, pixel pitch µm `b16`, max baud `b22–25`, feature flags `'Y'/'N'` at `b26–33` (heartbeat, –, battery, temperature, power, sensitivity, level, mode) | ✅ |
-| `02` | Status | `b6`: 0 idle, 2 paused, other working | ✅ (idle) |
+| `02` | Status | `b6`: 0 idle, 2 paused, other working (0x50 seen); `b7–14`: x, y, w₈, h of the last job | ✅ |
 | `03` | Parameters | time `b5`, power `b6`, level `b7`, sensitivity `b8`, mode `b9` | ✅ |
-| `04` | Job flow | `b5=02` accepted (`b6=01`), `b5=03` progress % in `b6`, `b5=04` transfer complete | 🔍 |
+| `04` | Job flow | `b5=02` accepted (`b6=01`), `b5=03` **receive** progress % in `b6`, `b5=04` transfer complete | ✅ |
 | `06` | Baud switched | ok `b5`, baud `b6–9` | ✅ |
 | `0B` | Telemetry, about 1 Hz | temperature °C `b5`, battery % `b6`, charging mA `b7–8` (`FF` = unsupported) | ✅ |
-| `0C` | Events | `b5`: 1 finished, 2 paused (low battery), 3 paused, 4 UI hint ❓ | 🔍 |
-| `0D` | Head position | `b5='P'`, y `b6–7`, x `b8–9` | 🔍 |
+| `0C` | Events | `b5`: 1 finished ✅, 2 paused (low battery), 3 paused, 4 UI hint ❓ | partly ✅ |
+| `0D 02` | Burn progress, about 1 Hz while burning | `b5='%'`, percent `b6`, seconds since burn start `b7–8`, head x `b9–10` and row y `b11–12` **relative to the job's top-left** | ✅ |
+| `0D` | Head position (vendor app) | `b5='P'`, y `b6–7`, x `b8–9`; reference frame unverified, ignored by this app | 🔍 |
 | `00` | Unknown, sent once after identify | `FF AA 0F 00 01 0C 01 F6 54 C6 2A 08 82 9E 55` (serial number?) ❓ | ✅ |
 
 ### Captured identify response (Master 2 Mini, firmware 7)

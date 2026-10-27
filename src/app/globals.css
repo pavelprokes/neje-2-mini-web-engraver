@@ -527,6 +527,10 @@ progress {
   background: var(--ok);
   color: var(--surface);
 }
+.phases li[data-state='stopped'] .phase-num {
+  border-color: var(--danger);
+  color: var(--danger);
+}
 .phases .hint {
   margin-top: 0.25rem;
 }
