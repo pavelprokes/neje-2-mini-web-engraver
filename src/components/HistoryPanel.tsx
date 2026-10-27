@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useI18n } from '@/i18n/I18nProvider';
 import type { HistoryEntry } from '@/lib/history';
 import { Panel } from './fields';
@@ -12,13 +12,24 @@ interface Props {
   readonly onOpen: (entry: HistoryEntry) => void;
   readonly onApplySettings: (entry: HistoryEntry) => void;
   readonly onDelete: (entry: HistoryEntry) => void;
+  readonly onExport: () => void;
+  readonly onImport: (file: File) => void;
+  readonly onClear: () => void;
 }
 
 /** `entries === null` means history storage is unavailable in this browser. */
-export function HistoryPanel({ entries, canSave, onSave, onOpen, onApplySettings, onDelete }: Props) {
+export function HistoryPanel({ entries, canSave, onSave, onOpen, onApplySettings, onDelete, onExport, onImport, onClear }: Props) {
   const { t, formatDate, formatNumber } = useI18n();
   // deleting removes the focused button; keep keyboard users in the panel
   const container = useRef<HTMLDivElement>(null);
+  const importInput = useRef<HTMLInputElement>(null);
+  // two-step delete-all: the first click arms it, a second one within 4 s confirms
+  const [clearArmed, setClearArmed] = useState(false);
+  useEffect(() => {
+    if (!clearArmed) return;
+    const timer = setTimeout(() => setClearArmed(false), 4000);
+    return () => clearTimeout(timer);
+  }, [clearArmed]);
 
   const thumbnails = useMemo(() => new Map((entries ?? []).map((e) => [e.id, URL.createObjectURL(e.thumbnail)])), [entries]);
   useEffect(() => () => thumbnails.forEach((url) => URL.revokeObjectURL(url)), [thumbnails]);
@@ -70,11 +81,42 @@ export function HistoryPanel({ entries, canSave, onSave, onOpen, onApplySettings
         </ul>
       )}
       {entries !== null && (
-        <div className="row">
-          <button type="button" onClick={onSave} disabled={!canSave}>
-            {t('historySave')}
-          </button>
-        </div>
+        <>
+          <div className="row">
+            <button type="button" onClick={onSave} disabled={!canSave}>
+              {t('historySave')}
+            </button>
+            <button type="button" onClick={onExport} disabled={entries.length === 0}>
+              {t('historyExport')}
+            </button>
+            <button type="button" onClick={() => importInput.current?.click()}>
+              {t('historyImport')}
+            </button>
+            <input
+              ref={importInput}
+              type="file"
+              accept=".json,application/json"
+              hidden
+              onChange={(e) => {
+                const file = e.currentTarget.files?.[0];
+                if (file) onImport(file);
+                e.currentTarget.value = '';
+              }}
+            />
+            <button
+              type="button"
+              disabled={entries.length === 0}
+              onClick={() => {
+                if (!clearArmed) return setClearArmed(true);
+                setClearArmed(false);
+                onClear();
+              }}
+            >
+              {clearArmed ? t('historyClearConfirm') : t('historyClear')}
+            </button>
+          </div>
+          <p className="hint">{t('historyStorageNote')}</p>
+        </>
       )}
       </div>
     </Panel>

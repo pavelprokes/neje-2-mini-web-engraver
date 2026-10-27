@@ -78,8 +78,8 @@ export interface Point {
   readonly y: number;
 }
 
-/** The laser parameters a user controls; the rest stay at their device values. */
-export type LaserParamsPatch = Partial<Pick<LaserParams, 'power' | 'burnTimeMs'>>;
+/** Any subset of the device parameters; the ones not given stay at their device values. */
+export type LaserParamsPatch = Partial<LaserParams>;
 
 export type TrafficListener = (direction: 'tx' | 'rx', bytes: Uint8Array) => void;
 

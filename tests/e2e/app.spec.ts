@@ -14,8 +14,11 @@ async function connectSimulator(page: Page) {
   await expect(page.getByRole('status', { name: 'Engraver status' })).toHaveText('Ready');
 }
 
+const openTab = (page: Page, name: string) => page.getByRole('tab', { name, exact: true }).click();
+
 async function loadImage(page: Page, name = 'photo.png') {
-  await page.locator('input[type=file]').setInputFiles(fixture(name));
+  await openTab(page, 'Image');
+  await page.locator('input[type=file][accept^="image"]').setInputFiles(fixture(name));
   await expect(page.getByText(new RegExp(name.replace('.', '\\.')))).toBeVisible();
 }
 
@@ -48,6 +51,7 @@ test.describe('accessibility (WCAG 2.2 AA, axe)', () => {
       await page.emulateMedia({ colorScheme });
       await connectSimulator(page);
       await loadImage(page);
+      await openTab(page, 'Machine');
       await page.getByText('Advanced').click();
       await page.getByLabel('Show serial traffic').check();
       await page.getByRole('button', { name: 'Go home' }).click();
@@ -69,6 +73,7 @@ test.describe('accessibility (WCAG 2.2 AA, axe)', () => {
     await expect(page.getByRole('status', { name: 'Engraver status' })).toHaveText('Ready');
     await loadImage(page);
 
+    await openTab(page, 'Position');
     const x = page.getByLabel('X from left (mm)');
     await expect(x).toHaveValue('0');
     await page.getByRole('group', { name: 'Work area preview' }).focus();
@@ -130,9 +135,11 @@ test.describe('engraving with the simulator', () => {
     await expect(page.getByRole('status', { name: 'Engraver status' })).toHaveText('Engraving');
     await expect(page.getByRole('button', { name: 'Stop', exact: true })).toBeFocused();
     await expect(page.getByRole('button', { name: 'Disconnect' })).toBeDisabled();
+    await openTab(page, 'Laser');
     await expect(page.getByLabel('Power')).toBeDisabled();
     await expect(progress(page)).toHaveAttribute('aria-valuetext', 'Done', { timeout: 15_000 });
     await expect(outcome(page)).toContainText(/Finished at .+, took \d+:\d\d/);
+    await openTab(page, 'History');
     await expect(page.getByRole('button', { name: 'Open photo.png with its settings' })).toBeVisible();
   });
 
@@ -147,8 +154,8 @@ test.describe('engraving with the simulator', () => {
     for (const stop of stops) {
       await page.getByRole('button', { name: 'Start engraving…' }).click();
       const dialog = page.getByRole('dialog');
-      await dialog.getByRole('checkbox').first().check();
-      await dialog.getByRole('checkbox').last().check();
+      await dialog.getByLabel('I am wearing laser safety goggles').check();
+      await dialog.getByLabel('The material is in place and nothing flammable is nearby').check();
       await dialog.getByRole('button', { name: 'Start', exact: true }).click();
       await expect(progress(page)).toHaveAttribute('aria-valuetext', /^Engraving \d+ %$/);
       await stop();
@@ -160,31 +167,41 @@ test.describe('engraving with the simulator', () => {
   test('swapping the image keeps every setting; history restores both', async ({ page }) => {
     await loadImage(page);
     await page.getByLabel('Width (mm)').fill('30');
+    await openTab(page, 'Laser');
     await page.getByLabel('Power').fill('55');
+    await openTab(page, 'Position');
     await page.getByRole('button', { name: 'Center' }).click();
     await expect(page.getByLabel('X from left (mm)')).toHaveValue('40'); // (110 − 30) / 2
     const x = await page.getByLabel('X from left (mm)').inputValue();
+    await openTab(page, 'History');
     await page.getByRole('button', { name: 'Save to history' }).click();
     await expect(page.getByRole('button', { name: 'Open photo.png with its settings' })).toBeVisible();
 
     await loadImage(page, 'logo.svg');
     await expect(page.getByText('logo.svg, vector')).toBeVisible();
     await expect(page.getByLabel('Width (mm)')).toHaveValue('30');
-    await expect(page.getByLabel('Power')).toHaveValue('55');
     await expect(page.getByLabel('Height (mm)')).toHaveValue('15');
+    await openTab(page, 'Laser');
+    await expect(page.getByLabel('Power')).toHaveValue('55');
 
     await page.getByLabel('Power').fill('20');
+    await openTab(page, 'Image');
     await page.getByLabel('Width (mm)').fill('12');
+    await openTab(page, 'History');
     await page.getByRole('button', { name: 'Open photo.png with its settings' }).click();
+    await openTab(page, 'Image');
     await expect(page.getByText('photo.png, 300 × 150 px')).toBeVisible();
-    await expect(page.getByLabel('Power')).toHaveValue('55');
     await expect(page.getByLabel('Width (mm)')).toHaveValue('30');
+    await openTab(page, 'Laser');
+    await expect(page.getByLabel('Power')).toHaveValue('55');
+    await openTab(page, 'Position');
     await expect(page.getByLabel('X from left (mm)')).toHaveValue(x);
   });
 
   test('trace frame outlines only what will burn, margins trimmed', async ({ page }) => {
     await connectSimulator(page);
     await loadImage(page, 'logo.svg'); // shapes leave a 5 % blank margin on every side
+    await openTab(page, 'Machine');
     await page.getByText('Advanced').click();
     await page.getByLabel('Show serial traffic').check();
     const trace = page.getByRole('button', { name: 'Trace frame' });
@@ -238,6 +255,7 @@ test.describe('engraving with the simulator', () => {
     await connectSimulator(page);
     await page.getByRole('button', { name: 'Go home' }).click();
     await loadImage(page); // 2:1 image → 40 × 20 mm
+    await openTab(page, 'Position');
     await page.getByLabel('X from left (mm)').fill('10');
     await page.getByLabel('Y from top (mm)').fill('5');
     const toggle = page.getByRole('button', { name: 'Show dimensions' });
@@ -263,6 +281,7 @@ test.describe('engraving with the simulator', () => {
   });
 
   test('user presets are saved and applied', async ({ page }) => {
+    await openTab(page, 'Laser');
     await page.getByLabel('Power').fill('42');
     await page.getByLabel('New preset name').fill('Walnut 3 mm');
     await page.getByRole('button', { name: 'Save preset' }).click();
@@ -281,6 +300,7 @@ test.describe('engraving with the simulator', () => {
     await page.reload();
     await loadImage(page);
     await connectSimulator(page);
+    await openTab(page, 'Position');
     await expect(page.getByRole('button', { name: 'Testing motion…' })).toBeDisabled();
     await expect(page.getByRole('button', { name: 'Start engraving…' })).toBeDisabled();
     await expect(page.getByRole('button', { name: 'Start engraving…' })).toBeEnabled({ timeout: 15_000 });
@@ -294,6 +314,7 @@ test.describe('engraving with the simulator', () => {
     await page.getByRole('button', { name: 'Go home' }).click();
     await expect(page.getByText('Head at X 0 mm, Y 0 mm')).toBeVisible();
     await loadImage(page);
+    await openTab(page, 'Position');
     await page.getByLabel('X from left (mm)').fill('20');
     await page.getByRole('button', { name: 'Move head to image' }).click();
     await expect(page.getByText('Head at X 20 mm, Y 0 mm')).toBeVisible();
@@ -308,7 +329,7 @@ test.describe('engraving with the simulator', () => {
 });
 
 test('unreadable files show an accessible error', async ({ page }) => {
-  await page.locator('input[type=file]').setInputFiles(fixture('broken.heic'));
+  await page.locator('input[type=file][accept^="image"]').setInputFiles(fixture('broken.heic'));
   await expect(page.getByRole('alert').filter({ hasText: 'broken.heic' })).toContainText('“broken.heic” cannot be opened');
 });
 
@@ -322,4 +343,135 @@ test('keeps working offline after the first visit', async ({ page, context }) =>
   await expect(page.getByRole('heading', { name: 'NEJE Web Engraver' })).toBeVisible();
   await connectSimulator(page);
   await context.setOffline(false);
+});
+
+test.describe('layout, tabs and new tools', () => {
+  test('engraving controls come first; tabs follow the WAI-ARIA pattern and are remembered', async ({ page }) => {
+    const engrave = page.getByRole('heading', { name: 'Engrave', exact: true });
+    const tablist = page.getByRole('tablist', { name: 'Sections' });
+    const order = await page.evaluate(
+      ([a, b]) => a!.compareDocumentPosition(b!) & Node.DOCUMENT_POSITION_FOLLOWING,
+      [await engrave.elementHandle(), await tablist.elementHandle()] as const,
+    );
+    expect(order).toBeTruthy(); // the engrave panel is above the tabs
+
+    const image = page.getByRole('tab', { name: 'Image', exact: true });
+    await expect(image).toHaveAttribute('aria-selected', 'true');
+    await image.focus();
+    await page.keyboard.press('ArrowRight');
+    await expect(page.getByRole('tab', { name: 'Text', exact: true })).toBeFocused();
+    await expect(page.getByRole('tabpanel', { name: 'Text' })).toBeVisible();
+    await page.keyboard.press('End');
+    await expect(page.getByRole('tab', { name: 'Help', exact: true })).toHaveAttribute('aria-selected', 'true');
+    await page.keyboard.press('ArrowRight'); // wraps around
+    await expect(image).toHaveAttribute('aria-selected', 'true');
+    await openTab(page, 'History');
+    await page.reload();
+    await expect(page.getByRole('tab', { name: 'History', exact: true })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  test('the start dialog can skip saving to history (saving is the default)', async ({ page }) => {
+    await connectSimulator(page);
+    await loadImage(page);
+    for (const save of [false, true]) {
+      await page.getByRole('button', { name: 'Start engraving…' }).click();
+      const dialog = page.getByRole('dialog');
+      await expect(dialog.getByLabel('Save to history')).toBeChecked();
+      if (!save) await dialog.getByLabel('Save to history').uncheck();
+      await dialog.getByLabel('I am wearing laser safety goggles').check();
+      await dialog.getByLabel('The material is in place and nothing flammable is nearby').check();
+      await dialog.getByRole('button', { name: 'Start', exact: true }).click();
+      await page.getByRole('button', { name: 'Stop', exact: true }).click();
+      await expect(outcome(page)).toContainText('Stopped');
+    }
+    await openTab(page, 'History');
+    await expect(page.getByRole('button', { name: /^Open photo\.png/ })).toHaveCount(1);
+  });
+
+  test('history exports to a file and imports back', async ({ page }) => {
+    await loadImage(page);
+    await openTab(page, 'History');
+    await page.getByRole('button', { name: 'Save to history' }).click();
+    await expect(page.getByRole('button', { name: 'Open photo.png with its settings' })).toBeVisible();
+
+    const download = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Export history' }).click();
+    const file = await (await download).path();
+    expect((await download).suggestedFilename()).toMatch(/^neje-history-\d{4}-\d{2}-\d{2}\.json$/);
+
+    const clear = page.getByRole('button', { name: 'Delete all' });
+    await clear.click();
+    await expect(page.getByRole('button', { name: 'Really delete all?' })).toBeVisible();
+    await page.getByRole('button', { name: 'Really delete all?' }).click();
+    await expect(page.getByText('Every started job is saved here together with its settings.')).toBeVisible();
+
+    await page.locator('input[type=file][accept*="json"]').setInputFiles(file);
+    await expect(page.getByRole('button', { name: 'Open photo.png with its settings' })).toBeVisible();
+    await page.locator('input[type=file][accept*="json"]').setInputFiles({ name: 'evil.json', mimeType: 'application/json', buffer: Buffer.from('{"format":"x"}') });
+    await expect(page.getByRole('alert').filter({ hasText: 'could not be imported' })).toBeVisible();
+  });
+
+  test('typed text becomes a vector motif', async ({ page }) => {
+    await openTab(page, 'Text');
+    const use = page.getByRole('button', { name: 'Use text as motif' });
+    await expect(use).toBeDisabled();
+    await page.getByLabel('Text to engrave').fill('Eliška & Michal\n25. 4. 2026');
+    await page.getByLabel('Font').selectOption({ label: 'Serif' });
+    await page.getByLabel('Bold').check();
+    await use.click();
+    await openTab(page, 'Image');
+    await expect(page.getByText('text.svg, vector')).toBeVisible();
+    await expect(page.getByText(/Estimated time about/)).toBeVisible();
+  });
+
+  test('test patterns insert at their calibrated size without dithering', async ({ page }) => {
+    await page.getByRole('button', { name: 'Focus and resolution' }).click();
+    await expect(page.getByText('focus-test.svg, vector')).toBeVisible();
+    await expect(page.getByLabel('Width (mm)')).toHaveValue('20');
+    await expect(page.getByLabel('Height (mm)')).toHaveValue('12');
+    await expect(page.getByLabel('Dithering')).toHaveValue('threshold');
+  });
+
+  test('a size typed right after inserting a pattern wins, and the field shows the real value', async ({ page }) => {
+    await page.getByRole('button', { name: 'Focus and resolution' }).click();
+    const width = page.getByLabel('Width (mm)');
+    await width.fill('60'); // before the pattern has finished loading
+    await width.blur();
+    await expect(width).toHaveValue('60');
+    await expect(page.getByLabel('Height (mm)')).toHaveValue('35.9'); // 800 px × 160 / 267 = 479 px
+  });
+
+  test('machine settings come from the device and are sent back', async ({ page }) => {
+    await openTab(page, 'Machine');
+    await expect(page.getByText('Connect the engraver to change its settings.')).toBeVisible();
+    await connectSimulator(page);
+    await page.getByText('Advanced').click();
+    await page.getByLabel('Show serial traffic').check();
+    const speed = page.getByLabel('Speed mode (experimental)');
+    await expect(speed).toHaveValue('2'); // what the Master 2 Mini reports
+    await expect(speed.locator('option')).toHaveText(['Slow (better quality)', 'Fast', 'As set on the machine (2)']);
+    await page.getByLabel('Motion detection').selectOption({ label: 'Medium' });
+    const log = page.getByRole('region', { name: 'Serial traffic in hexadecimal' });
+    await expect(log).toContainText('→ ff aa 0b 03 01 07 50 0a 02 02 55'); // sensitivity 2, rest unchanged
+    await speed.selectOption('0');
+    await expect(log).toContainText('→ ff aa 0b 03 01 07 50 0a 02 00 55'); // mode 0 = slow
+  });
+
+  test('help explains connection and quality problems', async ({ page }) => {
+    await openTab(page, 'Help');
+    await expect(page.getByRole('heading', { name: 'The engraver does not connect' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'NEJE Master 2 Mini manual' })).toHaveAttribute('href', /neje\.wiki/);
+  });
+
+  for (const colorScheme of ['light', 'dark'] as const) {
+    test(`every tab passes axe, ${colorScheme}`, async ({ page }) => {
+      await page.emulateMedia({ colorScheme });
+      await connectSimulator(page);
+      await loadImage(page);
+      for (const name of ['Image', 'Text', 'Position', 'Laser', 'History', 'Machine', 'Help']) {
+        await openTab(page, name);
+        await expectAccessible(page);
+      }
+    });
+  }
 });
