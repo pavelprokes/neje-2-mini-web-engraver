@@ -55,6 +55,13 @@ interface NumberFieldProps {
 export function NumberField({ label, value, min, max, step = 0.5, onChange, readOnly, describedBy }: NumberFieldProps) {
   const id = useId();
   const [draft, setDraft] = useState<string | null>(null);
+  // If the value changes from outside while the user is typing (another control, an async
+  // update), show the real value instead of a draft that no longer reflects the state.
+  const [seen, setSeen] = useState(value);
+  if (value !== seen) {
+    setSeen(value);
+    if (draft !== null && Number(draft.replace(',', '.')) !== value) setDraft(null);
+  }
   const shown = draft ?? String(value);
 
   const commit = (raw: string) => {

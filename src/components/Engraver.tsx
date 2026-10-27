@@ -4,7 +4,9 @@ import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, us
 import type { MessageKey } from '@/i18n';
 import { useI18n } from '@/i18n/I18nProvider';
 import { errorKeyFor, errorNotice, useDevice, type Notice } from '@/hooks/useDevice';
-import { addHistory, listHistory, removeHistory, type HistoryEntry } from '@/lib/history';
+import { addHistory, clearHistory, importHistory, listHistory, removeHistory, type HistoryEntry } from '@/lib/history';
+import { HistoryFileError, MAX_IMPORT_BYTES, parseHistoryFile, serializeHistory } from '@/lib/historyFile';
+import { patternFile, type TestPattern } from '@/lib/patterns';
 import { decodeImage, ImageDecodeError, type ImageAsset } from '@/lib/imaging/decode';
 import { fitPadded, renderRaster, type Raster } from '@/lib/imaging/raster';
 import { DEFAULT_JOB_SETTINGS, DEFAULT_WORK_AREA, estimateSeconds, LIMITS, mmToPx, pxToMm, type JobSettings, type WorkArea as Area } from '@/lib/job';
@@ -13,10 +15,12 @@ import { motionTestOnConnect } from '@/lib/storage';
 import { bitmapLength, packBitmap, transferSeconds, type NejeSession, type SessionSnapshot } from '@/lib/protocol';
 import { isWebSerialSupported } from '@/lib/transport/webSerial';
 import { useDebouncedEffect } from './fields';
+import { HelpPanel, MachinePanel, PatternsPanel, TextPanel } from './featurePanels';
 import { HistoryPanel } from './HistoryPanel';
 import { JobPhases } from './JobPhases';
 import { AdvancedPanel, AppHeader, EngravePanel, ImagePanel, LaserPanel, PositionPanel } from './panels';
 import { StartDialog } from './StartDialog';
+import { selectTab, Tabs } from './Tabs';
 import { WorkArea } from './WorkArea';
 
 interface Motif {
@@ -27,6 +31,8 @@ interface Motif {
 
 const REPO_URL = 'https://github.com/pavelprokes/neje-2-mini-web-engraver';
 const MOTION_TEST_MM = 5;
+/** Errors whose fix is in the Help tab. */
+const CONNECTION_ERRORS = new Set<MessageKey>(['errorNoResponse', 'errorPortOpen', 'errorDisconnected', 'errorUnresponsive']);
 export const STOP_BUTTON_ID = 'stop-button';
 const clamp = (v: number, { min, max }: { min: number; max: number }) => Math.min(max, Math.max(min, v));
 const THUMBNAIL_SIZE = 112;
@@ -203,14 +209,44 @@ export function Engraver() {
     }
   }, [motif, raster, settings, t, refreshHistory]);
 
-  const startJob = async () => {
+  const startJob = async (save: boolean) => {
     setConfirming(false);
     if (!raster) return;
-    void saveToHistory();
+    if (save) void saveToHistory();
     const { rect, dots } = raster;
     // the Start button becomes disabled; put focus where it matters during a job
     requestAnimationFrame(() => document.getElementById(STOP_BUTTON_ID)?.focus());
     await run((s) => s.engrave(rect, packBitmap(dots, rect.width, rect.height, settings.oddRows), { power: settings.power, burnTimeMs: settings.burnTimeMs }));
+  };
+
+  const insertPattern = async (pattern: TestPattern) => {
+    // calibration patterns are drawn 1 unit = 1 dot: use their size, no dithering. Applied
+    // before the (async) load, so anything the user changes meanwhile is not overwritten.
+    patch({ widthMm: pattern.widthMm, dither: 'threshold', invert: false, rotation: 0, mirrored: false });
+    await loadFile(patternFile(pattern));
+  };
+
+  const exportHistoryFile = async () => {
+    try {
+      const json = await serializeHistory(await listHistory());
+      const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+      const a = Object.assign(document.createElement('a'), { href: url, download: `neje-history-${new Date().toISOString().slice(0, 10)}.json` });
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    } catch (e) {
+      setLocalError(errorNotice(e));
+    }
+  };
+
+  const importHistoryFile = async (file: File) => {
+    try {
+      if (file.size > MAX_IMPORT_BYTES) throw new HistoryFileError('file too large');
+      const count = await importHistory(parseHistoryFile(await file.text()));
+      setAnnouncement(t('historyImported', { count }));
+      refreshHistory();
+    } catch (e) {
+      setLocalError({ key: 'historyImportError', vars: { reason: e instanceof Error ? e.message : String(e) } });
+    }
   };
 
   const openEntry = async (entry: HistoryEntry) => {
@@ -295,6 +331,11 @@ export function Engraver() {
           {error && (
             <div className="alert" role="alert">
               <span>{t(error.key, error.vars)}</span>
+              {CONNECTION_ERRORS.has(error.key) && (
+                <button type="button" onClick={() => selectTab('help')}>
+                  {t('openHelp')}
+                </button>
+              )}
               {(localError ?? device.error) && (
               <button
                 type="button"
@@ -309,31 +350,6 @@ export function Engraver() {
               )}
             </div>
           )}
-          <ImagePanel settings={settings} patch={patch} motifLabel={motifLabel} heightMm={raster ? pxToMm(raster.rect.height, area) : null} onFile={loadFile} />
-          <PositionPanel
-            xMm={raster ? pxToMm(raster.rect.x, area) : settings.xMm}
-            yMm={raster ? pxToMm(raster.rect.y, area) : settings.yMm}
-            patch={patch}
-            onCenter={() => raster && patch({ xMm: pxToMm((area.width - raster.rect.width) / 2, area), yMm: pxToMm((area.height - raster.rect.height) / 2, area) })}
-            canMoveHead={connected && !!raster && !jobActive && !motionTesting}
-            onMoveHead={() => raster && void run((s) => s.moveTo(raster.rect.x, raster.rect.y))}
-            canTestMotion={connected && !jobActive && !motionTesting}
-            motionTesting={motionTesting}
-            onTestMotion={() => void run(testMotion)}
-          />
-          <LaserPanel
-            power={settings.power}
-            burnTimeMs={settings.burnTimeMs}
-            disabled={jobActive}
-            patch={patch}
-            presets={presets}
-            selectedPresetId={selectedPresetId}
-            onSavePreset={(name) => {
-              updatePresets([...userPresets, { id: `user-${Date.now()}`, label: { name }, power: settings.power, burnTimeMs: settings.burnTimeMs }]);
-              setAnnouncement(t('presetSaved', { name }));
-            }}
-            onDeletePreset={(id) => updatePresets(userPresets.filter((p) => p.id !== id))}
-          />
           <EngravePanel
             connected={connected}
             hasMotif={!!raster}
@@ -350,22 +366,97 @@ export function Engraver() {
             onPauseResume={() => void run((s) => (s.getSnapshot().machine === 'paused' ? s.resume() : s.pause()))}
             onStart={() => setConfirming(true)}
           />
-          <HistoryPanel
-            entries={history}
-            canSave={!!raster}
-            onSave={() => void saveToHistory()}
-            onOpen={(e) => void openEntry(e)}
-            onApplySettings={(e) => !jobActive && setSettings(e.settings)}
-            onDelete={(e) => void removeHistory(e.id).then(refreshHistory, () => setHistory(null))}
-          />
-          <AdvancedPanel
-            oddRows={settings.oddRows}
-            patch={patch}
-            autoMotionTest={autoMotionTest}
-            onAutoMotionTest={motionTestOnConnect.set}
-            showTraffic={showTraffic}
-            onShowTraffic={setShowTraffic}
-            traffic={device.traffic}
+          <Tabs
+            label={t('tabsLabel')}
+            tabs={[
+              {
+                id: 'image',
+                label: t('tabImage'),
+                content: (
+                  <>
+                    <ImagePanel settings={settings} patch={patch} motifLabel={motifLabel} heightMm={raster ? pxToMm(raster.rect.height, area) : null} onFile={loadFile} />
+                    <PatternsPanel onInsert={(p) => void insertPattern(p)} />
+                  </>
+                ),
+              },
+              { id: 'text', label: t('tabText'), content: <TextPanel onUse={(file) => void loadFile(file)} /> },
+              {
+                id: 'position',
+                label: t('tabPosition'),
+                content: (
+                  <PositionPanel
+                    xMm={raster ? pxToMm(raster.rect.x, area) : settings.xMm}
+                    yMm={raster ? pxToMm(raster.rect.y, area) : settings.yMm}
+                    patch={patch}
+                    onCenter={() => raster && patch({ xMm: pxToMm((area.width - raster.rect.width) / 2, area), yMm: pxToMm((area.height - raster.rect.height) / 2, area) })}
+                    canMoveHead={connected && !!raster && !jobActive && !motionTesting}
+                    onMoveHead={() => raster && void run((s) => s.moveTo(raster.rect.x, raster.rect.y))}
+                    canTestMotion={connected && !jobActive && !motionTesting}
+                    motionTesting={motionTesting}
+                    onTestMotion={() => void run(testMotion)}
+                  />
+                ),
+              },
+              {
+                id: 'laser',
+                label: t('tabLaser'),
+                content: (
+                  <LaserPanel
+                    power={settings.power}
+                    burnTimeMs={settings.burnTimeMs}
+                    disabled={jobActive}
+                    patch={patch}
+                    presets={presets}
+                    selectedPresetId={selectedPresetId}
+                    onSavePreset={(name) => {
+                      updatePresets([...userPresets, { id: `user-${Date.now()}`, label: { name }, power: settings.power, burnTimeMs: settings.burnTimeMs }]);
+                      setAnnouncement(t('presetSaved', { name }));
+                    }}
+                    onDeletePreset={(id) => updatePresets(userPresets.filter((p) => p.id !== id))}
+                  />
+                ),
+              },
+              {
+                id: 'history',
+                label: t('tabHistory'),
+                content: (
+                  <HistoryPanel
+                    entries={history}
+                    canSave={!!raster}
+                    onSave={() => void saveToHistory()}
+                    onOpen={(e) => void openEntry(e)}
+                    onApplySettings={(e) => !jobActive && setSettings(e.settings)}
+                    onDelete={(e) => void removeHistory(e.id).then(refreshHistory, () => setHistory(null))}
+                    onExport={() => void exportHistoryFile()}
+                    onImport={(file) => void importHistoryFile(file)}
+                    onClear={() => void clearHistory().then(refreshHistory, () => setHistory(null))}
+                  />
+                ),
+              },
+              {
+                id: 'machine',
+                label: t('tabMachine'),
+                content: (
+                  <>
+                    <MachinePanel
+                      params={connected ? (snapshot?.params ?? null) : null}
+                      disabled={jobActive || motionTesting}
+                      onChange={(p) => void run((s) => (s.isBusy() ? Promise.resolve() : s.setLaserParams(p)))}
+                    />
+                    <AdvancedPanel
+                      oddRows={settings.oddRows}
+                      patch={patch}
+                      autoMotionTest={autoMotionTest}
+                      onAutoMotionTest={motionTestOnConnect.set}
+                      showTraffic={showTraffic}
+                      onShowTraffic={setShowTraffic}
+                      traffic={device.traffic}
+                    />
+                  </>
+                ),
+              },
+              { id: 'help', label: t('tabHelp'), content: <HelpPanel /> },
+            ]}
           />
         </div>
 
@@ -420,7 +511,7 @@ export function Engraver() {
             time: settings.burnTimeMs,
           })}
           estimate={[uploadSeconds !== null ? t('uploadFirst', { time: duration(uploadSeconds) }) : '', estimate ?? ''].join(' ').trim()}
-          onConfirm={() => void startJob()}
+          onConfirm={(save) => void startJob(save)}
           onClose={() => setConfirming(false)}
         />
       )}

@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 267 160" shape-rendering="crispEdges">
+  <!-- Focus and resolution test (20 × 12 mm at 75 µm, 1 unit = 1 dot). Left: groups of three
+       lines, line = gap = 1, 2, 3, 4 dots, vertical on top, horizontal below. Right: rings
+       as in the NEJE focus guide; with good focus they stay separate. -->
+  <rect x="8" y="6" width="1" height="52"/>
+  <rect x="10" y="6" width="1" height="52"/>
+  <rect x="12" y="6" width="1" height="52"/>
+  <rect x="30" y="6" width="2" height="52"/>
+  <rect x="34" y="6" width="2" height="52"/>
+  <rect x="38" y="6" width="2" height="52"/>
+  <rect x="58" y="6" width="3" height="52"/>
+  <rect x="64" y="6" width="3" height="52"/>
+  <rect x="70" y="6" width="3" height="52"/>
+  <rect x="92" y="6" width="4" height="52"/>
+  <rect x="100" y="6" width="4" height="52"/>
+  <rect x="108" y="6" width="4" height="52"/>
+  <rect x="8" y="70" width="104" height="1"/>
+  <rect x="8" y="72" width="104" height="1"/>
+  <rect x="8" y="74" width="104" height="1"/>
+  <rect x="8" y="82" width="104" height="2"/>
+  <rect x="8" y="86" width="104" height="2"/>
+  <rect x="8" y="90" width="104" height="2"/>
+  <rect x="8" y="100" width="104" height="3"/>
+  <rect x="8" y="106" width="104" height="3"/>
+  <rect x="8" y="112" width="104" height="3"/>
+  <rect x="8" y="124" width="104" height="4"/>
+  <rect x="8" y="132" width="104" height="4"/>
+  <rect x="8" y="140" width="104" height="4"/>
+  <g fill="none" stroke="#000" stroke-width="3" shape-rendering="geometricPrecision">
+    <circle cx="200" cy="80" r="8"/>
+    <circle cx="200" cy="80" r="18"/>
+    <circle cx="200" cy="80" r="28"/>
+    <circle cx="200" cy="80" r="38"/>
+    <circle cx="200" cy="80" r="48"/>
+    <circle cx="200" cy="80" r="58"/>
+  </g>
+  <circle cx="200" cy="80" r="3"/>
+</svg>

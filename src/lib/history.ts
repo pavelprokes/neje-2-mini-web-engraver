@@ -66,3 +66,15 @@ export async function addHistory(entry: Omit<HistoryEntry, 'id' | 'createdAt'>):
 export async function removeHistory(id: number): Promise<void> {
   await run('readwrite', (s) => s.delete(id));
 }
+
+/** Adds imported entries, keeping their original dates; returns how many were added. */
+export async function importHistory(entries: readonly { name: string; createdAt: number; asset: Blob; thumbnail: Blob; settings: JobSettings }[]): Promise<number> {
+  for (const e of entries) await run('readwrite', (s) => s.add({ ...e }));
+  const all = await listHistory();
+  await Promise.all(all.slice(HISTORY_LIMIT).map((old) => removeHistory(old.id)));
+  return entries.length;
+}
+
+export async function clearHistory(): Promise<void> {
+  await run('readwrite', (s) => s.clear());
+}

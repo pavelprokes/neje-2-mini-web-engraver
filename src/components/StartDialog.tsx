@@ -8,7 +8,8 @@ interface Props {
   readonly open: boolean;
   readonly summary: string;
   readonly estimate: string;
-  readonly onConfirm: () => void;
+  /** `save` = the user wants the job kept in history. */
+  readonly onConfirm: (save: boolean) => void;
   readonly onClose: () => void;
 }
 
@@ -35,12 +36,13 @@ function StartForm({ titleId, summary, estimate, onConfirm, onClose }: Omit<Prop
   const { t } = useI18n();
   const [goggles, setGoggles] = useState(false);
   const [material, setMaterial] = useState(false);
+  const [save, setSave] = useState(true);
   return (
     <form
       method="dialog"
       onSubmit={(e) => {
         e.preventDefault();
-        if (goggles && material) onConfirm();
+        if (goggles && material) onConfirm(save);
       }}
     >
       <h2 id={titleId}>{t('confirmTitle')}</h2>
@@ -49,6 +51,7 @@ function StartForm({ titleId, summary, estimate, onConfirm, onClose }: Omit<Prop
       <p className="notice">{t('safetyNote')}</p>
       <CheckboxField label={t('confirmGoggles')} checked={goggles} onChange={setGoggles} />
       <CheckboxField label={t('confirmMaterial')} checked={material} onChange={setMaterial} />
+      <CheckboxField label={t('saveToHistory')} checked={save} onChange={setSave} />
       <div className="row">
         <button type="submit" className="primary" disabled={!goggles || !material}>
           {t('confirmStart')}

@@ -166,7 +166,7 @@ body {
 
 .layout {
   display: grid;
-  grid-template-columns: minmax(18rem, 24rem) minmax(0, 1fr);
+  grid-template-columns: minmax(18rem, 28rem) minmax(0, 1fr);
   gap: 1rem;
   max-width: 90rem;
   margin: 0 auto;
@@ -182,6 +182,10 @@ body {
   display: grid;
   gap: 1rem;
   align-content: start;
+  min-width: 0; /* lets wide children (tab strip) scroll instead of widening the column */
+}
+.tabs {
+  min-width: 0;
 }
 
 .stage {
@@ -614,4 +618,87 @@ details > summary {
   cursor: pointer;
   min-height: 1.5rem;
   font-weight: 600;
+}
+
+/* ---------- tabs ---------- */
+
+.tablist {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--line);
+  /* one row; scrolls sideways in narrow columns instead of wrapping */
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.tablist [role='tab'] {
+  flex: none;
+  min-height: 2.5rem;
+  padding-inline: 0.5rem;
+  font-size: 0.9375rem;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  background: transparent;
+  color: var(--muted);
+  margin-bottom: -1px;
+}
+.tablist [role='tab'][aria-selected='true'] {
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--line);
+  font-weight: 700;
+  box-shadow: inset 0 3px 0 var(--accent);
+}
+.tabpanel {
+  display: grid;
+  gap: 1rem;
+  padding-top: 1rem;
+}
+.tabpanel[hidden] {
+  display: none;
+}
+.tabpanel:focus-visible {
+  outline-offset: 4px;
+}
+
+.pattern-list {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pattern-list li {
+  display: grid;
+  grid-template-columns: 4rem minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: center;
+}
+.pattern-list img {
+  width: 4rem;
+  height: 2.5rem;
+  object-fit: contain;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+
+textarea {
+  width: 100%;
+  min-height: 5rem;
+  padding: 0.5rem;
+  border: 1px solid var(--control);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  resize: vertical;
+}
+
+.help-list {
+  margin: 0.25rem 0 0;
+  padding-inline-start: 1.25rem;
+}
+.help-list li + li {
+  margin-top: 0.375rem;
 }
