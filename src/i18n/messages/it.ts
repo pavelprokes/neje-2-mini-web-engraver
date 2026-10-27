@@ -19,6 +19,7 @@ export const it: Messages = {
   statusReady: 'Pronto',
   statusWorking: 'Incisione in corso',
   statusPaused: 'In pausa',
+  statusUnresponsive: 'Non risponde',
   deviceSummary: '{model}, firmware {firmware}',
   unknownModel: 'Modello sconosciuto ({id})',
   simulatorBadge: 'Simulatore',
@@ -31,6 +32,7 @@ export const it: Messages = {
   errorDisconnected: 'L’incisore è stato scollegato.',
   errorBusy: 'L’incisore è occupato. Riprovi tra un momento.',
   errorTimeout: 'L’incisore non ha risposto in tempo.',
+  errorUnresponsive: 'L’incisore non risponde più. Verifichi che sia acceso. Se lo è, scolleghi il cavo USB, lo ricolleghi e si connetta di nuovo.',
   errorGeneric: 'Si è verificato un problema: {message}',
   errorDecode: 'Impossibile aprire «{name}». Usi PNG, JPEG, WebP, GIF, BMP, AVIF o SVG.',
 

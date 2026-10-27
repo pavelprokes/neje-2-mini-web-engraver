@@ -217,6 +217,25 @@ describe('NejeSession', () => {
     expect(session.getSnapshot().head).toBeNull();
   });
 
+  it('flags a device that stops sending its heartbeat, and recovers', async () => {
+    let deliver: (b: Uint8Array) => void = () => {};
+    const device = {
+      open: (onData: (b: Uint8Array) => void) => (deliver = onData),
+      async write(b: Uint8Array) {
+        if (b[3] === 0x01) queueMicrotask(() => deliver(CAPTURED.info)); // info says: heartbeat supported
+      },
+      async close() {},
+    };
+    const session = new NejeSession(device, { silenceTimeoutMs: 40 });
+    sessions.push(session);
+    await session.connect();
+    expect(session.getSnapshot().responsive).toBe(true);
+    await until(session, (s) => !s.responsive, 1000); // board hung: the port stays open, nothing arrives
+    expect(session.getSnapshot().link).toBe('connected');
+    deliver(CAPTURED.telemetry);
+    expect(session.getSnapshot().responsive).toBe(true);
+  });
+
   it('marks the link closed when the cable is pulled', async () => {
     const { sim, session } = setup();
     await session.connect();

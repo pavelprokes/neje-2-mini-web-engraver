@@ -19,6 +19,7 @@ export const de: Messages = {
   statusReady: 'Bereit',
   statusWorking: 'Graviert',
   statusPaused: 'Pausiert',
+  statusUnresponsive: 'Reagiert nicht',
   deviceSummary: '{model}, Firmware {firmware}',
   unknownModel: 'Unbekanntes Modell ({id})',
   simulatorBadge: 'Simulator',
@@ -31,6 +32,7 @@ export const de: Messages = {
   errorDisconnected: 'Die Verbindung zum Gravierer wurde getrennt.',
   errorBusy: 'Der Gravierer ist beschäftigt. Versuchen Sie es gleich noch einmal.',
   errorTimeout: 'Der Gravierer hat nicht rechtzeitig geantwortet.',
+  errorUnresponsive: 'Das Graviergerät reagiert nicht mehr. Prüfen Sie, ob es eingeschaltet ist. Falls ja, ziehen Sie das USB-Kabel ab, stecken Sie es wieder ein und verbinden Sie sich erneut.',
   errorGeneric: 'Etwas ist schiefgelaufen: {message}',
   errorDecode: '„{name}“ kann nicht geöffnet werden. Verwenden Sie PNG, JPEG, WebP, GIF, BMP, AVIF oder SVG.',
 

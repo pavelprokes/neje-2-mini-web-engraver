@@ -19,6 +19,7 @@ export const es: Messages = {
   statusReady: 'Listo',
   statusWorking: 'Grabando',
   statusPaused: 'En pausa',
+  statusUnresponsive: 'No responde',
   deviceSummary: '{model}, firmware {firmware}',
   unknownModel: 'Modelo desconocido ({id})',
   simulatorBadge: 'Simulador',
@@ -31,6 +32,7 @@ export const es: Messages = {
   errorDisconnected: 'El grabador se ha desconectado.',
   errorBusy: 'El grabador está ocupado. Inténtelo de nuevo en un momento.',
   errorTimeout: 'El grabador no respondió a tiempo.',
+  errorUnresponsive: 'El grabador ha dejado de responder. Compruebe que está encendido. Si lo está, desconecte el cable USB, vuelva a conectarlo y conéctese de nuevo.',
   errorGeneric: 'Algo salió mal: {message}',
   errorDecode: 'No se puede abrir «{name}». Use PNG, JPEG, WebP, GIF, BMP, AVIF o SVG.',
 

@@ -19,6 +19,7 @@ export const pl: Messages = {
   statusReady: 'Gotowy',
   statusWorking: 'Grawerowanie',
   statusPaused: 'Wstrzymano',
+  statusUnresponsive: 'Nie odpowiada',
   deviceSummary: '{model}, firmware {firmware}',
   unknownModel: 'Nieznany model ({id})',
   simulatorBadge: 'Symulator',
@@ -31,6 +32,7 @@ export const pl: Messages = {
   errorDisconnected: 'Grawer został odłączony.',
   errorBusy: 'Grawer jest zajęty. Spróbuj ponownie za chwilę.',
   errorTimeout: 'Grawer nie odpowiedział na czas.',
+  errorUnresponsive: 'Grawerka przestała odpowiadać. Sprawdź, czy jest włączona. Jeśli tak, odłącz kabel USB, podłącz go ponownie i połącz się jeszcze raz.',
   errorGeneric: 'Coś poszło nie tak: {message}',
   errorDecode: 'Nie można otworzyć pliku „{name}”. Użyj PNG, JPEG, WebP, GIF, BMP, AVIF lub SVG.',
 

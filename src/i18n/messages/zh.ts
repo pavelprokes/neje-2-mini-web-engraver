@@ -19,6 +19,7 @@ export const zh: Messages = {
   statusReady: '就绪',
   statusWorking: '正在雕刻',
   statusPaused: '已暂停',
+  statusUnresponsive: '无响应',
   deviceSummary: '{model}，固件 {firmware}',
   unknownModel: '未知型号（{id}）',
   simulatorBadge: '模拟器',
@@ -31,6 +32,7 @@ export const zh: Messages = {
   errorDisconnected: '雕刻机已断开连接。',
   errorBusy: '雕刻机正忙，请稍后重试。',
   errorTimeout: '雕刻机未及时响应。',
+  errorUnresponsive: '雕刻机已停止响应。请检查它是否已开机。如已开机，请拔下 USB 线后重新插上，然后重新连接。',
   errorGeneric: '出现问题：{message}',
   errorDecode: '无法打开“{name}”。请使用 PNG、JPEG、WebP、GIF、BMP、AVIF 或 SVG。',
 

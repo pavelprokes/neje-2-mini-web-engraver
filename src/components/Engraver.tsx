@@ -48,6 +48,7 @@ async function thumbnailOf(raster: Raster): Promise<Blob> {
 function statusOf(snapshot: SessionSnapshot | null): { key: MessageKey; state: 'off' | 'ready' | 'busy' } {
   if (!snapshot) return { key: 'statusDisconnected', state: 'off' };
   if (snapshot.link === 'connecting') return { key: 'statusConnecting', state: 'busy' };
+  if (!snapshot.responsive) return { key: 'statusUnresponsive', state: 'off' };
   if (snapshot.machine === 'paused') return { key: 'statusPaused', state: 'busy' };
   if (snapshot.machine === 'working' || snapshot.job.stage === 'uploading') return { key: 'statusWorking', state: 'busy' };
   return { key: 'statusReady', state: 'ready' };
@@ -276,7 +277,7 @@ export function Engraver() {
       : t('imageRaster', { name: motif.name, width: motif.asset.width, height: motif.asset.height })
     : null;
 
-  const error = localError ?? device.error;
+  const error = localError ?? device.error ?? (connected && !snapshot.responsive ? ({ key: 'errorUnresponsive' } as const) : null);
 
   return (
     <>
@@ -304,6 +305,7 @@ export function Engraver() {
           {error && (
             <div className="alert" role="alert">
               <span>{t(error.key, error.vars)}</span>
+              {(localError ?? device.error) && (
               <button
                 type="button"
                 onClick={() => {
@@ -314,6 +316,7 @@ export function Engraver() {
               >
                 ×
               </button>
+              )}
             </div>
           )}
           <ImagePanel settings={settings} patch={patch} motifLabel={motifLabel} heightMm={raster ? pxToMm(raster.rect.height, area) : null} onFile={loadFile} />

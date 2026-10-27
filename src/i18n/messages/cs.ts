@@ -19,6 +19,7 @@ export const cs: Messages = {
   statusReady: 'Připraveno',
   statusWorking: 'Gravíruje',
   statusPaused: 'Pozastaveno',
+  statusUnresponsive: 'Neodpovídá',
   deviceSummary: '{model}, firmware {firmware}',
   unknownModel: 'Neznámý model ({id})',
   simulatorBadge: 'Simulátor',
@@ -31,6 +32,7 @@ export const cs: Messages = {
   errorDisconnected: 'Gravírka byla odpojena.',
   errorBusy: 'Gravírka je zaneprázdněná. Zkuste to za chvíli.',
   errorTimeout: 'Gravírka neodpověděla včas.',
+  errorUnresponsive: 'Gravírka přestala odpovídat. Zkontrolujte, že je zapnutá. Pokud ano, odpojte USB kabel, znovu ho zapojte a připojte se znovu.',
   errorGeneric: 'Něco se pokazilo: {message}',
   errorDecode: '„{name}“ nejde otevřít. Použijte PNG, JPEG, WebP, GIF, BMP, AVIF nebo SVG.',
 

@@ -46,6 +46,11 @@ export interface SessionSnapshot {
   readonly job: JobProgress;
   /** Set when the link closed unexpectedly. */
   readonly closeReason: NejeErrorCode | null;
+  /**
+   * False when a device that promises a heartbeat has been silent for too long. The USB bridge
+   * keeps the port alive even when the engraver's board is off or hung, so silence is the only sign.
+   */
+  readonly responsive: boolean;
 }
 
 export interface Point {
@@ -64,6 +69,8 @@ export interface SessionOptions {
   readonly identifyTimeoutMs?: number;
   readonly identifyAttempts?: number;
   readonly jobAcceptTimeoutMs?: number;
+  /** Silence after which a heartbeat device counts as unresponsive. */
+  readonly silenceTimeoutMs?: number;
 }
 
 interface Waiter {
@@ -82,6 +89,7 @@ const INITIAL: SessionSnapshot = {
   head: null,
   job: { stage: 'none' },
   closeReason: null,
+  responsive: true,
 };
 
 /** Firmware defaults reported by a factory Master 2 Mini, used until the device reports its own. */
@@ -103,6 +111,9 @@ export class NejeSession {
   private readonly chunkSize: number;
   private readonly identifyTimeoutMs: number;
   private readonly identifyAttempts: number;
+  private readonly silenceTimeoutMs: number;
+  private lastRx = 0;
+  private watchdog: ReturnType<typeof setInterval> | undefined;
   private readonly jobAcceptTimeoutMs: number;
 
   constructor(
@@ -113,6 +124,7 @@ export class NejeSession {
     this.identifyTimeoutMs = options.identifyTimeoutMs ?? 1500;
     this.identifyAttempts = options.identifyAttempts ?? 3;
     this.jobAcceptTimeoutMs = options.jobAcceptTimeoutMs ?? 5000;
+    this.silenceTimeoutMs = options.silenceTimeoutMs ?? 4000;
     transport.open(
       (chunk) => this.receive(chunk),
       () => this.linkLost(),
@@ -141,6 +153,8 @@ export class NejeSession {
   // ---- receiving ---------------------------------------------------------------------------
 
   private receive(chunk: Uint8Array): void {
+    this.lastRx = Date.now();
+    if (!this.snapshot.responsive) this.update({ responsive: true });
     for (const l of this.traffic) l('rx', chunk);
     for (const frame of this.parser.push(chunk)) this.handle(decodeMessage(frame));
   }
@@ -180,7 +194,20 @@ export class NejeSession {
     }
   }
 
+  private startWatchdog(): void {
+    clearInterval(this.watchdog);
+    this.watchdog = setInterval(
+      () => {
+        // the device may stay quiet while it swallows bitmap data
+        const silent = Date.now() - this.lastRx > this.silenceTimeoutMs && !this.streaming;
+        if (silent && this.snapshot.responsive) this.update({ responsive: false });
+      },
+      Math.max(50, this.silenceTimeoutMs / 4),
+    );
+  }
+
   private linkLost(): void {
+    clearInterval(this.watchdog);
     if (this.snapshot.link === 'closed') return;
     this.upload?.controller.abort();
     this.motion?.abort();
@@ -246,6 +273,7 @@ export class NejeSession {
       const message = await reply;
       if (message) {
         this.update({ link: 'connected' });
+        if (message.info.features.heartbeat) this.startWatchdog();
         return message.info;
       }
     }
@@ -435,6 +463,7 @@ export class NejeSession {
       await Promise.race([this.stop().catch(() => undefined), new Promise((resolve) => setTimeout(resolve, 3000))]);
     }
     this.upload?.controller.abort();
+    clearInterval(this.watchdog);
     this.update({ link: 'closed', previewing: false });
     await this.transport.close();
   }

@@ -18,6 +18,7 @@ export const en = {
   statusReady: 'Ready',
   statusWorking: 'Engraving',
   statusPaused: 'Paused',
+  statusUnresponsive: 'Not responding',
   deviceSummary: '{model}, firmware {firmware}',
   unknownModel: 'Unknown model ({id})',
   simulatorBadge: 'Simulator',
@@ -30,6 +31,7 @@ export const en = {
   errorDisconnected: 'The engraver was disconnected.',
   errorBusy: 'The engraver is busy. Try again in a moment.',
   errorTimeout: 'The engraver did not answer in time.',
+  errorUnresponsive: 'The engraver stopped responding. Check that it is switched on. If it is, unplug the USB cable, plug it back in and connect again.',
   errorGeneric: 'Something went wrong: {message}',
   errorDecode: '“{name}” cannot be opened. Use PNG, JPEG, WebP, GIF, BMP, AVIF or SVG.',
 

@@ -19,6 +19,7 @@ export const fr: Messages = {
   statusReady: 'Prêt',
   statusWorking: 'Gravure en cours',
   statusPaused: 'En pause',
+  statusUnresponsive: 'Ne répond pas',
   deviceSummary: '{model}, firmware {firmware}',
   unknownModel: 'Modèle inconnu ({id})',
   simulatorBadge: 'Simulateur',
@@ -31,6 +32,7 @@ export const fr: Messages = {
   errorDisconnected: 'Le graveur a été déconnecté.',
   errorBusy: 'Le graveur est occupé. Réessayez dans un instant.',
   errorTimeout: 'Le graveur n’a pas répondu à temps.',
+  errorUnresponsive: 'Le graveur ne répond plus. Vérifiez qu’il est allumé. Si c’est le cas, débranchez le câble USB, rebranchez-le et reconnectez-vous.',
   errorGeneric: 'Une erreur s’est produite : {message}',
   errorDecode: 'Impossible d’ouvrir « {name} ». Utilisez PNG, JPEG, WebP, GIF, BMP, AVIF ou SVG.',
 
