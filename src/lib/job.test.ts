@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { toDots } from './imaging/dither';
+import { computeDimensions } from './dimensions';
 import { dotBounds, fitPadded } from './imaging/raster';
 import { paddedWidth } from './protocol';
 import { DEFAULT_JOB_SETTINGS, DEFAULT_WORK_AREA, estimateSeconds, layoutJob, mmToPx, parseJobSettings, pxToMm } from './job';
@@ -91,5 +92,22 @@ describe('trace bounds', () => {
   it('shifts a padded box back inside the work area', () => {
     expect(fitPadded({ x: 1460, y: 0, width: 3, height: 1 }, area)).toEqual({ x: 1458, y: 0, width: 3, height: 1 }); // 1458 + 8 = 1466
     expect(fitPadded({ x: 10, y: 0, width: 3, height: 1 }, area)).toEqual({ x: 10, y: 0, width: 3, height: 1 });
+  });
+});
+
+describe('computeDimensions', () => {
+  const box = { width: 1466, height: 1600 };
+
+  it('measures the image and the head against all edges', () => {
+    const d = computeDimensions(box, { x: 100, y: 200, width: 400, height: 300 }, { x: 50, y: 250 });
+    expect(d.image).toEqual({ width: 400, height: 300, left: 100, top: 200, right: 966, bottom: 1100 });
+    expect(d.head).toEqual({ left: 50, top: 250, right: 1416, bottom: 1350 });
+    expect(d.headToImage).toEqual({ dx: -50, dy: 50 }); // head left of the image, inside its height
+  });
+
+  it('is zero when the head sits on the image corner, and skips what is unknown', () => {
+    expect(computeDimensions(box, { x: 10, y: 20, width: 8, height: 8 }, { x: 10, y: 20 }).headToImage).toEqual({ dx: 0, dy: 0 });
+    expect(computeDimensions(box, null, { x: 1, y: 2 })).toMatchObject({ image: null, headToImage: null });
+    expect(computeDimensions(box, { x: 0, y: 0, width: 8, height: 8 }, null)).toMatchObject({ head: null, headToImage: null });
   });
 });

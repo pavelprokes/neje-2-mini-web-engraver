@@ -52,3 +52,5 @@ export function createLocalStore<T>(key: string, fallback: T, parse: (raw: unkno
 
 export const motionTestOnConnect = createLocalStore('neje.motionTestOnConnect.v1', true, (v) => (typeof v === 'boolean' ? v : undefined));
 
+
+export const dimensionsVisible = createLocalStore('neje.dimensions.v1', false, (v) => (typeof v === 'boolean' ? v : undefined));
