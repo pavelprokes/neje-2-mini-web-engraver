@@ -7,6 +7,15 @@ updates:
     groups:
       dependencies:
         patterns: ['*']
+        update-types: [minor, patch]
+    ignore:
+      # Majors that the Next.js toolchain does not support yet: eslint-config-next 16 needs
+      # ESLint 9 (eslint-plugin-import peer range), Next 16 targets TypeScript 5/6.
+      # Remove an entry once eslint-config-next / Next.js declare support.
+      - dependency-name: eslint
+        update-types: [version-update:semver-major]
+      - dependency-name: typescript
+        update-types: [version-update:semver-major]
   - package-ecosystem: github-actions
     directory: /
     schedule:
